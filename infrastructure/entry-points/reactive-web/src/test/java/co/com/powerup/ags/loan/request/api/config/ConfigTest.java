@@ -1,6 +1,6 @@
 package co.com.powerup.ags.loan.request.api.config;
 
-import co.com.powerup.ags.loan.request.api.Handler;
+import co.com.powerup.ags.loan.request.api.HandlerV1;
 import co.com.powerup.ags.loan.request.api.RouterRest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-@ContextConfiguration(classes = {RouterRest.class, Handler.class})
+@ContextConfiguration(classes = {RouterRest.class, HandlerV1.class})
 @WebFluxTest
 @Import({CorsConfig.class, SecurityHeadersConfig.class})
 class ConfigTest {

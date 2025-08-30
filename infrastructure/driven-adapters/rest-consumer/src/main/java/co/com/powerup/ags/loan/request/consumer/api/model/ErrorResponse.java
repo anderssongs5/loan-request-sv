@@ -1,5 +1,7 @@
 package co.com.powerup.ags.loan.request.consumer.api.model;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
@@ -16,7 +18,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ErrorResponse {
-    private OffsetDateTime timestamp = null;
+    private LocalDateTime timestamp = null;
     private String path = null;
     private Integer status = null;
     private String error = null;
