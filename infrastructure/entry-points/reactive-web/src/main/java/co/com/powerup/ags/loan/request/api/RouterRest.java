@@ -2,16 +2,12 @@ package co.com.powerup.ags.loan.request.api;
 
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.ErrorResponse;
-import co.com.powerup.ags.loan.request.api.dto.LoanRequestResponseDto;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
 import org.springframework.context.annotation.Bean;

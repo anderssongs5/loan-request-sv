@@ -1,78 +1,163 @@
 package co.com.powerup.ags.loan.request.r2dbc;
 
+import co.com.powerup.ags.loan.request.model.loantype.LoanType;
+import co.com.powerup.ags.loan.request.r2dbc.entity.LoanTypeEntity;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivecommons.utils.ObjectMapper;
-import org.springframework.data.domain.Example;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import static org.mockito.ArgumentMatchers.any;
+import java.math.BigDecimal;
+
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LoanTypeReactiveRepositoryAdapterTest {
-    // TODO: change four you own tests
 
-    @InjectMocks
-    LoanTypeReactiveRepositoryAdapter repositoryAdapter;
+    private static final Integer LOAN_TYPE_ID_1 = 1;
+    private static final Integer LOAN_TYPE_ID_2 = 2;
+    private static final String PERSONAL_LOAN = "Personal Loan";
+    private static final String MORTGAGE_LOAN = "Mortgage Loan";
+    private static final BigDecimal MIN_AMOUNT = new BigDecimal("1000.00");
+    private static final BigDecimal MAX_AMOUNT = new BigDecimal("100000.00");
+    private static final BigDecimal MORTGAGE_MIN_AMOUNT = new BigDecimal("50000.00");
+    private static final BigDecimal MORTGAGE_MAX_AMOUNT = new BigDecimal("500000.00");
+    private static final Integer MIN_TERM = 6;
+    private static final Integer MAX_TERM = 60;
+    private static final Integer MORTGAGE_MIN_TERM = 12;
+    private static final Integer MORTGAGE_MAX_TERM = 360;
+    private static final BigDecimal INTEREST_RATE = new BigDecimal("12.5");
+    private static final BigDecimal MORTGAGE_INTEREST_RATE = new BigDecimal("8.5");
 
     @Mock
-    LoanTypeReactiveRepository repository;
+    private LoanTypeReactiveRepository repository;
 
     @Mock
-    ObjectMapper mapper;
+    private ObjectMapper objectMapper;
+
+    private LoanTypeReactiveRepositoryAdapter adapter;
+
+    @BeforeEach
+    void setUp() {
+        adapter = new LoanTypeReactiveRepositoryAdapter(repository, objectMapper);
+    }
 
     @Test
-    void mustFindValueById() {
+    void shouldGetLoanTypeByIdSuccessfully() {
+        LoanTypeEntity loanTypeEntity = LoanTypeEntity.builder()
+                .id(LOAN_TYPE_ID_1)
+                .name(PERSONAL_LOAN)
+                .minAmount(MIN_AMOUNT)
+                .maxAmount(MAX_AMOUNT)
+                .minTerm(MIN_TERM)
+                .maxTerm(MAX_TERM)
+                .interestRate(INTEREST_RATE)
+                .automaticValidation(true)
+                .build();
 
-        when(repository.findById("1")).thenReturn(Mono.just("test"));
-        when(mapper.map("test", Object.class)).thenReturn("test");
+        LoanType expectedLoanType = LoanType.builder()
+                .id(LOAN_TYPE_ID_1)
+                .name(PERSONAL_LOAN)
+                .minAmount(MIN_AMOUNT)
+                .maxAmount(MAX_AMOUNT)
+                .minTerm(MIN_TERM)
+                .maxTerm(MAX_TERM)
+                .interestRate(INTEREST_RATE)
+                .automaticValidation(true)
+                .build();
 
-        Mono<Object> result = repositoryAdapter.findById("1");
+        when(repository.findById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeEntity));
+        when(objectMapper.map(loanTypeEntity, LoanType.class))
+                .thenReturn(expectedLoanType);
+
+        Mono<LoanType> result = adapter.getById(LOAN_TYPE_ID_1);
 
         StepVerifier.create(result)
-                .expectNextMatches(value -> value.equals("test"))
+                .expectNextMatches(loanType -> 
+                    loanType.getId().equals(LOAN_TYPE_ID_1) &&
+                    loanType.getName().equals(PERSONAL_LOAN) &&
+                    loanType.getMinAmount().equals(MIN_AMOUNT) &&
+                    loanType.getMaxAmount().equals(MAX_AMOUNT) &&
+                    loanType.getMinTerm().equals(MIN_TERM) &&
+                    loanType.getMaxTerm().equals(MAX_TERM) &&
+                    loanType.getInterestRate().equals(INTEREST_RATE) &&
+                    loanType.getAutomaticValidation().equals(true)
+                )
                 .verifyComplete();
     }
 
     @Test
-    void mustFindAllValues() {
-        when(repository.findAll()).thenReturn(Flux.just("test"));
-        when(mapper.map("test", Object.class)).thenReturn("test");
+    void shouldReturnEmptyWhenLoanTypeNotFoundById() {
+        when(repository.findById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.empty());
 
-        Flux<Object> result = repositoryAdapter.findAll();
+        Mono<LoanType> result = adapter.getById(LOAN_TYPE_ID_1);
 
         StepVerifier.create(result)
-                .expectNextMatches(value -> value.equals("test"))
                 .verifyComplete();
     }
 
     @Test
-    void mustFindByExample() {
-        when(repository.findAll(any(Example.class))).thenReturn(Flux.just("test"));
-        when(mapper.map("test", Object.class)).thenReturn("test");
+    void shouldHandleErrorWhenGettingLoanTypeById() {
+        RuntimeException error = new RuntimeException("Database connection error");
 
-        Flux<Object> result = repositoryAdapter.findByExample("test");
+        when(repository.findById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.error(error));
+
+        Mono<LoanType> result = adapter.getById(LOAN_TYPE_ID_1);
 
         StepVerifier.create(result)
-                .expectNextMatches(value -> value.equals("test"))
-                .verifyComplete();
+                .expectError(RuntimeException.class)
+                .verify();
     }
 
     @Test
-    void mustSaveValue() {
-        when(repository.save("test")).thenReturn(Mono.just("test"));
-        when(mapper.map("test", Object.class)).thenReturn("test");
+    void shouldGetMortgageLoanTypeById() {
+        LoanTypeEntity mortgageLoanEntity = LoanTypeEntity.builder()
+                .id(LOAN_TYPE_ID_2)
+                .name(MORTGAGE_LOAN)
+                .minAmount(MORTGAGE_MIN_AMOUNT)
+                .maxAmount(MORTGAGE_MAX_AMOUNT)
+                .minTerm(MORTGAGE_MIN_TERM)
+                .maxTerm(MORTGAGE_MAX_TERM)
+                .interestRate(MORTGAGE_INTEREST_RATE)
+                .automaticValidation(false)
+                .build();
 
-        Mono<Object> result = repositoryAdapter.save("test");
+        LoanType expectedMortgageLoanType = LoanType.builder()
+                .id(LOAN_TYPE_ID_2)
+                .name(MORTGAGE_LOAN)
+                .minAmount(MORTGAGE_MIN_AMOUNT)
+                .maxAmount(MORTGAGE_MAX_AMOUNT)
+                .minTerm(MORTGAGE_MIN_TERM)
+                .maxTerm(MORTGAGE_MAX_TERM)
+                .interestRate(MORTGAGE_INTEREST_RATE)
+                .automaticValidation(false)
+                .build();
+
+        when(repository.findById(LOAN_TYPE_ID_2))
+                .thenReturn(Mono.just(mortgageLoanEntity));
+        when(objectMapper.map(mortgageLoanEntity, LoanType.class))
+                .thenReturn(expectedMortgageLoanType);
+
+        Mono<LoanType> result = adapter.getById(LOAN_TYPE_ID_2);
 
         StepVerifier.create(result)
-                .expectNextMatches(value -> value.equals("test"))
+                .expectNextMatches(loanType -> 
+                    loanType.getId().equals(LOAN_TYPE_ID_2) &&
+                    loanType.getName().equals(MORTGAGE_LOAN) &&
+                    loanType.getMinAmount().equals(MORTGAGE_MIN_AMOUNT) &&
+                    loanType.getMaxAmount().equals(MORTGAGE_MAX_AMOUNT) &&
+                    loanType.getMinTerm().equals(MORTGAGE_MIN_TERM) &&
+                    loanType.getMaxTerm().equals(MORTGAGE_MAX_TERM) &&
+                    loanType.getInterestRate().equals(MORTGAGE_INTEREST_RATE) &&
+                    loanType.getAutomaticValidation().equals(false)
+                )
                 .verifyComplete();
     }
 }

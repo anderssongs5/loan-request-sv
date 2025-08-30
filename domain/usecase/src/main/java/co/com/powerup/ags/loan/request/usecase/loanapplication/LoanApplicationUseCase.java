@@ -1,5 +1,6 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
+import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
@@ -36,7 +37,13 @@ public class LoanApplicationUseCase {
         return validateLoanType(command.getLoanTypeId())
             .flatMap(loanType -> validateAmountAndTerm(loanType, command.getAmount(), command.getTerm())
                 .then(userGateway.getUserByIdNumber(command.getUserIdNumber())
-                    .onErrorMap(throwable -> new UserServiceException("User service unavailable", throwable))
+                    .onErrorMap(throwable -> {
+                        if (throwable instanceof UserValidationException) {
+                            return throwable;
+                        }
+                        
+                        return new UserServiceException("User service unavailable", throwable);
+                    })
                     .switchIfEmpty(Mono.error(new UserNotFoundException("User with ID number " + command.getUserIdNumber() + " does not exist")))
                 )
                 .zipWith(validateLoanApplicationStatusByName(PENDING))

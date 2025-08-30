@@ -1,11 +1,16 @@
 package co.com.powerup.ags.loan.request.config;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
+import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
+import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 public class UseCasesConfigTest {
 
@@ -29,6 +34,26 @@ public class UseCasesConfigTest {
     @Configuration
     @Import(UseCasesConfig.class)
     static class TestConfig {
+        
+        @Bean
+        public LoanApplicationRepository loanApplicationRepository() {
+            return mock(LoanApplicationRepository.class);
+        }
+        
+        @Bean
+        public LoanTypeRepository loanTypeRepository() {
+            return mock(LoanTypeRepository.class);
+        }
+        
+        @Bean
+        public LoanApplicationStatusRepository loanApplicationStatusRepository() {
+            return mock(LoanApplicationStatusRepository.class);
+        }
+        
+        @Bean
+        public UserGateway userGateway() {
+            return mock(UserGateway.class);
+        }
 
         @Bean
         public MyUseCase myUseCase() {
