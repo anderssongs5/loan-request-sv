@@ -37,12 +37,19 @@ public class UserRestConsumer implements UserGateway {
                 })
                 .doOnError(error -> log.error("Failed to get user for identity number: {}",
                         identityNumber, error))
-                .onErrorMap(WebClientResponseException.class, ex ->
-                        new UserServiceException("External user service error: " + ex.getMessage(), ex))
-                .onErrorMap(UserServiceException.class, ex -> ex)
-                .onErrorMap(UserValidationException.class, ex ->
-                        new co.com.powerup.ags.loan.request.model.exception.UserValidationException(ex.getMessage()))
-                .onErrorMap(Exception.class, ex ->
-                        new UserServiceException("Unexpected error retrieving user: " + ex.getMessage(), ex));
+                .onErrorMap(this::mapError);
+        
+    }
+    
+    private Throwable mapError(Throwable error) {
+        return switch (error) {
+            case WebClientResponseException webClientResponseException ->
+                    new UserServiceException("External user service error: " + error.getMessage(), error);
+            case UserValidationException userValidationException ->
+                    new co.com.powerup.ags.loan.request.model.exception.UserValidationException(error.getMessage());
+            case UserServiceException userServiceException -> error;
+            default ->
+                    new UserServiceException("Unexpected error retrieving user: " + error.getMessage(), error);
+        };
     }
 }
