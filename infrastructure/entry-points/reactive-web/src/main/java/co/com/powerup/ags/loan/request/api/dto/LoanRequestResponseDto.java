@@ -18,7 +18,7 @@ public class LoanRequestResponseDto {
     @Schema(description = "Unique loan request identifier", example = "123e4567-e89b-12d3-a456-426614174000")
     private String id;
     
-    @Schema(description = "User's email address", example = "john.doe@example.com")
+    @Schema(description = "User's email address", example = "andersson.garcia@example.com")
     private String email;
     
     @Schema(description = "Loan term in months", example = "24")

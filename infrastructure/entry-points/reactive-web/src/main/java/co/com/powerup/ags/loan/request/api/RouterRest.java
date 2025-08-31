@@ -111,7 +111,7 @@ public class RouterRest {
                                   "path": "/api/v1/loan-requests",
                                   "data": {
                                     "id": "123e4567-e89b-12d3-a456-426614174000",
-                                    "email": "john.doe@example.com",
+                                    "email": "andersson.garcia@example.com",
                                     "term": 24,
                                     "amount": 50000.00,
                                     "loanStatusId": 1,
