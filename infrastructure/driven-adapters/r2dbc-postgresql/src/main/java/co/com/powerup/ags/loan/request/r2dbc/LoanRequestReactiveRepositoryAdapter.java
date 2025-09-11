@@ -74,10 +74,7 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
         sortDirection = Optional.ofNullable(sortDirection).orElse("asc").toUpperCase();
         Integer offset = page * size;
 
-        List<String> allowedSortFields = List.of("email", "term", "amount", "status");
-        if (sortBy == null || !allowedSortFields.contains(sortBy)) {
-            sortBy = "request_id";
-        }
+        sortBy = validateAndMapSortField(sortBy);
         
         return repository.findByStatusesPageable(statuses, sortBy, sortDirection, size, offset)
                 .doOnSubscribe(subscription -> log.debug("Starting to fetch loan requests with pagination from database"))
@@ -85,6 +82,21 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
                 .doOnError(error -> log.error("Error retrieving paginated loan requests", error))
                 .map(LoanApplicationMapper.INSTANCE::toDomain);
     }
+    
+    private String validateAndMapSortField(String sortBy) {
+        if (sortBy == null) {
+            return "request_id";
+        }
+        
+        return switch (sortBy.toLowerCase()) {
+            case "email" -> "email";
+            case "term" -> "term";
+            case "amount" -> "amount";
+            case "status" -> "status_name";
+            default -> "request_id";
+        };
+    }
+    
     
     @Override
     public Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses) {

@@ -28,34 +28,24 @@ public interface LoanRequestReactiveRepository extends
     Flux<LoanRequestWithDetailsEntity> findAllWithDetails();
     
     @Query("""
-        SELECT lr.request_id, lr.amount, lr.term, lr.email,
-               ls.status_id, ls.name as status_name, ls.description as status_description,
-               lt.loan_type_id, lt.name as type_name,
-               lt.minimum_amount, lt.maximum_amount, lt.minimum_term, lt.maximum_term,
-               lt.interest_rate, lt.automatic_validation
-        FROM loan_requests lr
-        JOIN loan_request_statuses ls ON lr.status_id = ls.status_id
-        JOIN loan_types lt ON lr.loan_type_id = lt.loan_type_id
-        WHERE ls.name IN (:statuses)
-        ORDER BY
-            CASE WHEN :sortDirection = 'ASC' THEN
-                CASE :sortBy
-                    WHEN 'amount' THEN lr.amount::text
-                    WHEN 'term' THEN lr.term::text
-                    WHEN 'email' THEN lr.email
-                    WHEN 'status' THEN ls.name
-                    ELSE lr.request_id::text
-                END
-            END ASC,
-            CASE WHEN :sortDirection = 'DESC' THEN
-                CASE :sortBy
-                    WHEN 'amount' THEN lr.amount::text
-                    WHEN 'term' THEN lr.term::text
-                    WHEN 'email' THEN lr.email
-                    WHEN 'status' THEN ls.name
-                    ELSE lr.request_id::text
-                END
-            END DESC
+        SELECT * FROM (
+            SELECT lr.request_id, lr.amount, lr.term, lr.email,
+                   ls.status_id, ls.name as status_name, ls.description as status_description,
+                   lt.loan_type_id, lt.name as type_name,
+                   lt.minimum_amount, lt.maximum_amount, lt.minimum_term, lt.maximum_term,
+                   lt.interest_rate, lt.automatic_validation
+            FROM loan_requests lr
+            JOIN loan_request_statuses ls ON lr.status_id = ls.status_id
+            JOIN loan_types lt ON lr.loan_type_id = lt.loan_type_id
+            WHERE ls.name IN (:statuses)
+            ORDER BY
+                CASE WHEN :sortDirection = 'ASC' THEN
+                    :sortBy
+                END ASC,
+                CASE WHEN :sortDirection = 'DESC' THEN
+                    :sortBy
+                END DESC
+        )
         LIMIT :size OFFSET :offset
         """)
     Flux<LoanRequestWithDetailsEntity> findByStatusesPageable(@Param("statuses") Set<String> statuses,
