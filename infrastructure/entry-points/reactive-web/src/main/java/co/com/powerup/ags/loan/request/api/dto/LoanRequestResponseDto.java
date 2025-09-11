@@ -31,5 +31,5 @@ public class LoanRequestResponseDto {
     private Integer loanStatusId;
     
     @Schema(description = "Type of loan being requested. Must be a positive integer greater than 0.")
-    private String loanTypeId;
+    private Integer loanTypeId;
 }

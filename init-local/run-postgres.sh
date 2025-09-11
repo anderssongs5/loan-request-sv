@@ -9,10 +9,10 @@
 docker run -d \
   --name loan-request-postgres \
   -e POSTGRES_DB=loan-request-db \
-  -e POSTGRES_USER=test \
-  -e POSTGRES_PASSWORD=P@55w0rd \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  postgres:latest
+  postgres:17.6
 
 echo "PostgreSQL container 'loan-request-postgres' started successfully!"
 echo "Database: loan-request-db"

@@ -90,8 +90,8 @@ class LoanApplicationMapperTest {
         assertEquals(MARIA_EMAIL, loanApplication.getEmail());
         assertEquals(AMOUNT_75000, loanApplication.getAmount());
         assertEquals(TERM_36, loanApplication.getTerm());
-        assertNull(loanApplication.getStatus());
-        assertNull(loanApplication.getLoanType());
+        assertNotNull(loanApplication.getStatus());
+        assertNotNull(loanApplication.getLoanType());
     }
 
     @Test

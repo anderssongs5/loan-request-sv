@@ -6,6 +6,7 @@ import co.com.powerup.ags.loan.request.r2dbc.entity.LoanTypeEntity;
 import co.com.powerup.ags.loan.request.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
@@ -23,5 +24,10 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
     @Override
     public Mono<LoanType> getById(Integer id) {
         return super.findById(id);
+    }
+    
+    @Override
+    public Flux<LoanType> getAll() {
+        return super.findAll();
     }
 }

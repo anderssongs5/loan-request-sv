@@ -15,5 +15,10 @@ public interface LoanApplicationRepository {
     Flux<LoanApplication> getLoanApplicationsPageableByStatuses(Set<String> statuses, Integer page, Integer size,
                                                                 String sortBy, String sortDirection);
     
+    Flux<LoanApplication> getLoanApplicationsPageableByStatuses2(Set<Integer> statuses, Integer page, Integer size,
+                                                                String sortBy, String sortDirection);
+    
     Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses);
+    
+    Mono<Long> countLoanApplicationsByStatuses2(Set<Integer> statuses);
 }

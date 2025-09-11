@@ -836,4 +836,336 @@ class LoanApplicationUseCaseTest {
                 .expectError(RuntimeException.class)
                 .verify();
     }
+
+    @Test
+    void shouldGetLoanRequestsRequiringReview2WithDefaultParameters() {
+        User joseUser = User.builder()
+                .id(UUID.randomUUID().toString())
+                .name("José")
+                .lastName("García")
+                .email("jose.garcia@ejemplo.com")
+                .baseSalary(new BigDecimal("5000.00"))
+                .build();
+        
+        User mariaUser = User.builder()
+                .id(UUID.randomUUID().toString())
+                .name("María")
+                .lastName("Rodríguez")
+                .email("maria.rodriguez@ejemplo.com")
+                .baseSalary(new BigDecimal("7500.00"))
+                .build();
+        
+        LoanApplication joseApplication = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("jose.garcia@ejemplo.com")
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .status(pendingStatus)
+                .loanType(sampleLoanType)
+                .build();
+        
+        LoanApplication mariaApplication = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("maria.rodriguez@ejemplo.com")
+                .amount(AMOUNT_75000)
+                .term(TERM_36)
+                .status(pendingStatus)
+                .loanType(sampleLoanType)
+                .build();
+        
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(2L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(joseApplication, mariaApplication));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType));
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(userGateway.getUserByIdNumberOrEmail(null, "jose.garcia@ejemplo.com"))
+                .thenReturn(Mono.just(joseUser));
+        when(userGateway.getUserByIdNumberOrEmail(null, "maria.rodriguez@ejemplo.com"))
+                .thenReturn(Mono.just(mariaUser));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(pagedResponse -> {
+                    List<LoanRequestRequiringReview> content = pagedResponse.getContent();
+                    return content.size() == 2 &&
+                           content.get(0).getUserName().equals("José") &&
+                           content.get(0).getUserLastName().equals("García") &&
+                           content.get(1).getUserName().equals("María") &&
+                           content.get(1).getUserLastName().equals("Rodríguez") &&
+                           pagedResponse.getPagination().getTotalElements() == 2L;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetLoanRequestsRequiringReview2WithCustomParameters() {
+        LoanApplicationStatus manualReviewStatus = LoanApplicationStatus.builder()
+                .id(2)
+                .name("MANUAL_REVIEW")
+                .description("Manual review required")
+                .build();
+        
+        User carlosUser = User.builder()
+                .id(UUID.randomUUID().toString())
+                .name("Carlos")
+                .lastName("López")
+                .email("carlos.lopez@ejemplo.com")
+                .baseSalary(new BigDecimal("10000.00"))
+                .build();
+        
+        LoanApplication carlosApplication = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("carlos.lopez@ejemplo.com")
+                .amount(new BigDecimal("100000.00"))
+                .term(48)
+                .status(manualReviewStatus)
+                .loanType(sampleLoanType)
+                .build();
+        
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .statuses(Set.of(PENDING, "MANUAL_REVIEW"))
+                .page(2)
+                .size(5)
+                .sortBy("amount")
+                .sortDirection("desc")
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus, manualReviewStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(8L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(carlosApplication));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, "carlos.lopez@ejemplo.com"))
+                .thenReturn(Mono.just(carlosUser));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(pagedResponse -> {
+                    List<LoanRequestRequiringReview> content = pagedResponse.getContent();
+                    return content.size() == 1 &&
+                           content.get(0).getUserName().equals("Carlos") &&
+                           content.get(0).getUserLastName().equals("López") &&
+                           pagedResponse.getPagination().getTotalElements() == 8L &&
+                           pagedResponse.getPagination().getCurrentPage() == 1;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnEmptyPagedResponseWhenNoApplicationsFoundForReview2() {
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .statuses(Set.of(PENDING))
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(0L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.empty());
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(pagedResponse -> 
+                    pagedResponse.getContent().isEmpty() &&
+                    pagedResponse.getPagination().getTotalElements() == 0L
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldThrowExceptionWhenInvalidStatusesProvidedForReview2() {
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .statuses(Set.of("INVALID_STATUS", PENDING))
+                .build();
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof IllegalArgumentException &&
+                    throwable.getMessage().contains("Invalid status")
+                )
+                .verify();
+    }
+    
+    @Test
+    void shouldUseDefaultStatusesWhenStatusesIsNullForReview2() {
+        User joseUser = User.builder()
+                .id(UUID.randomUUID().toString())
+                .name("José")
+                .lastName("García")
+                .email("jose.garcia@ejemplo.com")
+                .baseSalary(BASE_SALARY)
+                .build();
+        
+        LoanApplication application = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("jose.garcia@ejemplo.com")
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .status(pendingStatus)
+                .loanType(sampleLoanType)
+                .build();
+        
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .statuses(null)
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(1L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(application));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, "jose.garcia@ejemplo.com"))
+                .thenReturn(Mono.just(joseUser));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(pagedResponse -> 
+                    pagedResponse.getContent().size() == 1 &&
+                    pagedResponse.getPagination().getTotalElements() == 1L
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldHandleLoanTypeRepositoryErrorInReview2() {
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(1L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(sampleLoanApplication));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.error(new RuntimeException("Database error")));
+        when(userGateway.getUserByIdNumberOrEmail(null, CARLOS_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldHandleUserGatewayErrorInReview2() {
+        LoanApplication application = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("jose.garcia@ejemplo.com")
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .status(pendingStatus)
+                .loanType(sampleLoanType)
+                .build();
+        
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(1L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(application));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, "jose.garcia@ejemplo.com"))
+                .thenReturn(Mono.error(new RuntimeException("User service down")));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldEnrichApplicationsWithFullDataInReview2() {
+        LoanType businessLoanType = LoanType.builder()
+                .id(2)
+                .name("Business Loan")
+                .minAmount(new BigDecimal("5000.00"))
+                .maxAmount(new BigDecimal("500000.00"))
+                .minTerm(12)
+                .maxTerm(120)
+                .interestRate(new BigDecimal("8.5"))
+                .automaticValidation(false)
+                .build();
+        
+        LoanApplicationStatus rejectedStatus = LoanApplicationStatus.builder()
+                .id(3)
+                .name("REJECTED")
+                .description("Application rejected")
+                .build();
+        
+        User carlosUser = User.builder()
+                .id(UUID.randomUUID().toString())
+                .name("Carlos")
+                .lastName("López")
+                .email("carlos.lopez@ejemplo.com")
+                .baseSalary(new BigDecimal("10000.00"))
+                .build();
+        
+        LoanApplication partialApplication = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email("carlos.lopez@ejemplo.com")
+                .amount(new BigDecimal("100000.00"))
+                .term(60)
+                .status(LoanApplicationStatus.builder().id(3).build())
+                .loanType(LoanType.builder().id(2).build())
+                .build();
+        
+        GetLoanApplicationsByStatusesCommand command = GetLoanApplicationsByStatusesCommand.builder()
+                .statuses(Set.of("REJECTED"))
+                .build();
+        
+        when(loanApplicationStatusRepository.getAll())
+                .thenReturn(Flux.just(pendingStatus, rejectedStatus));
+        when(loanApplicationRepository.countLoanApplicationsByStatuses2(any(Set.class)))
+                .thenReturn(Mono.just(1L));
+        when(loanApplicationRepository.getLoanApplicationsPageableByStatuses2(any(Set.class), any(Integer.class), any(Integer.class), any(), any()))
+                .thenReturn(Flux.just(partialApplication));
+        when(loanTypeRepository.getAll())
+                .thenReturn(Flux.just(sampleLoanType, businessLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, "carlos.lopez@ejemplo.com"))
+                .thenReturn(Mono.just(carlosUser));
+        
+        Mono<PagedResponse<LoanRequestRequiringReview>> result = useCase.getLoanRequestsRequiringReview2(command);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(pagedResponse -> {
+                    List<LoanRequestRequiringReview> content = pagedResponse.getContent();
+                    LoanRequestRequiringReview enrichedRequest = content.get(0);
+                    return content.size() == 1 &&
+                           enrichedRequest.getLoanType().equals("Business Loan") &&
+                           enrichedRequest.getStatus().equals("REJECTED") &&
+                           enrichedRequest.getUserName().equals("Carlos");
+                })
+                .verifyComplete();
+    }
 }

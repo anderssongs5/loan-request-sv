@@ -2,6 +2,7 @@ package co.com.powerup.ags.loan.request.r2dbc;
 
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestEntity;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestWithDetailsEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.query.ReactiveQueryByExampleExecutor;
@@ -9,7 +10,6 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
 import java.util.Set;
 
 public interface LoanRequestReactiveRepository extends
@@ -39,12 +39,18 @@ public interface LoanRequestReactiveRepository extends
             JOIN loan_types lt ON lr.loan_type_id = lt.loan_type_id
             WHERE ls.name IN (:statuses)
             ORDER BY
-                CASE WHEN :sortDirection = 'ASC' THEN
-                    :sortBy
-                END ASC,
-                CASE WHEN :sortDirection = 'DESC' THEN
-                    :sortBy
-                END DESC
+                CASE WHEN :sortBy = 'request_id' AND :sortDirection = 'ASC' THEN lr.request_id END ASC,
+                CASE WHEN :sortBy = 'request_id' AND :sortDirection = 'DESC' THEN lr.request_id END DESC,
+                CASE WHEN :sortBy = 'email' AND :sortDirection = 'ASC' THEN lr.email END ASC,
+                CASE WHEN :sortBy = 'email' AND :sortDirection = 'DESC' THEN lr.email END DESC,
+                CASE WHEN :sortBy = 'term' AND :sortDirection = 'ASC' THEN lr.term END ASC,
+                CASE WHEN :sortBy = 'term' AND :sortDirection = 'DESC' THEN lr.term END DESC,
+                CASE WHEN :sortBy = 'amount' AND :sortDirection = 'ASC' THEN lr.amount END ASC,
+                CASE WHEN :sortBy = 'amount' AND :sortDirection = 'DESC' THEN lr.amount END DESC,
+                CASE WHEN :sortBy = 'status_name' AND :sortDirection = 'ASC' THEN ls.name END ASC,
+                CASE WHEN :sortBy = 'status_name' AND :sortDirection = 'DESC' THEN ls.name END DESC,
+                CASE WHEN :sortBy NOT IN ('request_id', 'email', 'term', 'amount', 'status_name') AND :sortDirection = 'ASC' THEN lr.request_id END ASC,
+                CASE WHEN :sortBy NOT IN ('request_id', 'email', 'term', 'amount', 'status_name') AND :sortDirection = 'DESC' THEN lr.request_id END DESC
         )
         LIMIT :size OFFSET :offset
         """)
@@ -61,4 +67,8 @@ public interface LoanRequestReactiveRepository extends
         WHERE ls.name IN (:statuses)
         """)
     Mono<Long> countByStatuses(@Param("statuses") Set<String> statuses);
+
+    Flux<LoanRequestEntity> getAllByStatusIdIn(Set<Integer> statuses, Pageable pageable);
+    
+    Mono<Long> countByStatusIdIn(Set<Integer> statuses);
 }

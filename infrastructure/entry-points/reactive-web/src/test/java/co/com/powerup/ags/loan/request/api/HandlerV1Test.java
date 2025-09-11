@@ -681,6 +681,184 @@ class HandlerV1Test {
                 .verifyComplete();
     }
     
+    @Test
+    void shouldGetLoanRequestsByStatuses2WithDefaultParameters() {
+        LoanRequestRequiringReview loanRequest1 = createSampleLoanRequestRequiringReview(
+                JOSE_EMAIL, "José", "García", AMOUNT_50000, TERM_24, SALARY_5000);
+        LoanRequestRequiringReview loanRequest2 = createSampleLoanRequestRequiringReview(
+                MARIA_EMAIL, "María", "Rodríguez", AMOUNT_75000, TERM_36, SALARY_7500);
+        
+        PagedResponse<LoanRequestRequiringReview> pagedResponse = PagedResponse.of(
+                List.of(loanRequest1, loanRequest2), 0, 10, 2L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview2(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(pagedResponse));
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetLoanRequestsByStatuses2WithCustomParameters() {
+        LoanRequestRequiringReview loanRequest = createSampleLoanRequestRequiringReview(
+                CARLOS_EMAIL, "Carlos", "López", AMOUNT_75000, TERM_36, SALARY_7500);
+        
+        PagedResponse<LoanRequestRequiringReview> pagedResponse = PagedResponse.of(
+                List.of(loanRequest), 1, 5, 8L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview2(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(pagedResponse));
+        
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("statuses", "PENDING,MANUAL_REVIEW");
+        queryParams.put("page", "2");
+        queryParams.put("size", "5");
+        queryParams.put("sortBy", "amount");
+        queryParams.put("sortDirection", "desc");
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "?statuses=PENDING,MANUAL_REVIEW&page=2&size=5&sortBy=amount&sortDirection=desc"))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenPageValidationFailsForStatuses2() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.of("0"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSizeValidationFailsForStatuses2() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.of("101"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSortByValidationFailsForStatuses2() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.of("invalidField"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSortDirectionValidationFailsForStatuses2() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.empty());
+        when(request.queryParam("sortDirection")).thenReturn(Optional.of("invalid"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenStatusValidationFailsForStatuses2() {
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview2(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.error(new IllegalArgumentException("Invalid status: INVALID")));
+        
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.of("INVALID,PENDING"));
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.empty());
+        when(request.queryParam("sortDirection")).thenReturn(Optional.empty());
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetEmptyLoanRequestsByStatuses2() {
+        PagedResponse<LoanRequestRequiringReview> emptyPagedResponse = PagedResponse.of(
+                List.of(), 0, 10, 0L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview2(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(emptyPagedResponse));
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses2(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
     private LoanRequestRequiringReview createSampleLoanRequestRequiringReview(
             String email, String firstName, String lastName, 
             BigDecimal amount, Integer term, BigDecimal baseSalary) {

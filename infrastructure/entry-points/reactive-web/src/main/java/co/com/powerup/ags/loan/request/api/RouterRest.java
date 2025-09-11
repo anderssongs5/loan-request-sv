@@ -262,6 +262,7 @@ public class RouterRest {
     })
     public RouterFunction<ServerResponse> routerFunction(HandlerV1 handlerV1) {
         return route(GET("/api/v1/loan-requests"), handlerV1::getLoanRequestsByStatuses)
+                .andRoute(GET("/api/v1/loan-requests-2"), handlerV1::getLoanRequestsByStatuses2)
                 .andRoute(POST("/api/v1/loan-requests"), handlerV1::createLoanRequest);
     }
 }

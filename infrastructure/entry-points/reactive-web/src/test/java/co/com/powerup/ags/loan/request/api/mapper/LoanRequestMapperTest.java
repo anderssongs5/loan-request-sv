@@ -97,7 +97,7 @@ class LoanRequestMapperTest {
         assertEquals(Integer.valueOf(36), responseDto.getTerm());
         assertEquals(new BigDecimal("75000.00"), responseDto.getAmount());
         assertEquals(Integer.valueOf(1), responseDto.getLoanStatusId());
-        assertEquals("2", responseDto.getLoanTypeId());
+        assertEquals(2, responseDto.getLoanTypeId());
     }
 
     @Test
@@ -126,7 +126,7 @@ class LoanRequestMapperTest {
         assertEquals(Integer.valueOf(24), responseDto.getTerm());
         assertEquals(new BigDecimal("50000.00"), responseDto.getAmount());
         assertNull(responseDto.getLoanStatusId());
-        assertEquals("1", responseDto.getLoanTypeId());
+        assertEquals(1, responseDto.getLoanTypeId());
     }
 
     @Test

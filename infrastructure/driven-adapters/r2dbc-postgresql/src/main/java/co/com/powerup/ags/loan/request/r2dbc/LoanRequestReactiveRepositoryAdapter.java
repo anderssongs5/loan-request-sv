@@ -8,12 +8,14 @@ import co.com.powerup.ags.loan.request.r2dbc.mapper.LoanApplicationMapper;
 import org.reactivecommons.utils.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -83,6 +85,31 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
                 .map(LoanApplicationMapper.INSTANCE::toDomain);
     }
     
+    @Override
+    public Flux<LoanApplication> getLoanApplicationsPageableByStatuses2(Set<Integer> statuses, Integer page, Integer size,
+                                                                        String sortBy, String sortDirection) {
+        log.info("Retrieving loan applications by statuses using Pageable: {}, page: {}, size: {}, sortBy: {}, sortDirection: {}", 
+                statuses, page, size, sortBy, sortDirection);
+        
+        page = Optional.ofNullable(page).orElse(0);
+        size = Optional.ofNullable(size).orElse(10);
+        sortDirection = Optional.ofNullable(sortDirection).orElse("asc");
+        
+        sortBy = validateAndMapSortField2(sortBy);
+        
+        Sort sort = sortDirection.equalsIgnoreCase("desc") 
+                ? Sort.by(sortBy).descending() 
+                : Sort.by(sortBy).ascending();
+        
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        return repository.getAllByStatusIdIn(statuses, pageable)
+                .doOnSubscribe(subscription -> log.debug("Starting to fetch loan requests with Pageable from database"))
+                .doOnComplete(() -> log.info("Successfully retrieved paginated loan requests using Pageable"))
+                .doOnError(error -> log.error("Error retrieving paginated loan requests using Pageable", error))
+                .map(LoanApplicationMapper.INSTANCE::toDomain);
+    }
+    
     private String validateAndMapSortField(String sortBy) {
         if (sortBy == null) {
             return "request_id";
@@ -97,12 +124,35 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
         };
     }
     
+    private String validateAndMapSortField2(String sortBy) {
+        if (sortBy == null) {
+            return "requestId";
+        }
+        
+        return switch (sortBy.toLowerCase()) {
+            case "email" -> "email";
+            case "term" -> "term";
+            case "amount" -> "amount";
+            case "status" -> "statusId";
+            default -> "request_id";
+        };
+    }
     
     @Override
     public Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses) {
         log.info("Counting loan applications by statuses: {}", statuses);
         
         return repository.countByStatuses(statuses)
+                .doOnSubscribe(subscription -> log.debug("Starting to count loan requests by statuses"))
+                .doOnNext(count -> log.info("Found {} loan applications matching statuses: {}", count, statuses))
+                .doOnError(error -> log.error("Error counting loan applications by statuses", error));
+    }
+    
+    @Override
+    public Mono<Long> countLoanApplicationsByStatuses2(Set<Integer> statuses) {
+        log.info("Counting loan applications by statuses: {}", statuses);
+        
+        return repository.countByStatusIdIn(statuses)
                 .doOnSubscribe(subscription -> log.debug("Starting to count loan requests by statuses"))
                 .doOnNext(count -> log.info("Found {} loan applications matching statuses: {}", count, statuses))
                 .doOnError(error -> log.error("Error counting loan applications by statuses", error));

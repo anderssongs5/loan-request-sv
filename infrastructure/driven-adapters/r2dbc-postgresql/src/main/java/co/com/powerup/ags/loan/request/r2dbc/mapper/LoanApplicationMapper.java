@@ -18,8 +18,8 @@ public interface LoanApplicationMapper {
     LoanRequestEntity toEntity(LoanApplication loanApplication);
     
     @Mapping(target = "id", source = "requestId")
-    @Mapping(target = "status", ignore = true)
-    @Mapping(target = "loanType", ignore = true)
+    @Mapping(target = "status", expression = "java(new LoanApplicationStatus(entity.getStatusId()))")
+    @Mapping(target = "loanType", expression = "java(new LoanType(entity.getLoanTypeId()))")
     LoanApplication toDomain(LoanRequestEntity entity);
     
     @Mapping(target = "id", source = "requestId")

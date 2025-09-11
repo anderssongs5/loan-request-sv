@@ -52,8 +52,8 @@ adapters:
     port: 5432
     database: "loan-request-db"
     schema: "public"
-    username: "test"
-    password: "P@55w0rd"
+    username: "postgres"
+    password: "postgres"
   restconsumer:
     timeout: 5000
     url: "http://localhost:8080"

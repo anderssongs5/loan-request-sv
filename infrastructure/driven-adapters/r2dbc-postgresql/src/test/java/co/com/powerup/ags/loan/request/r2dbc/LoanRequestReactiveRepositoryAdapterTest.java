@@ -413,4 +413,211 @@ class LoanRequestReactiveRepositoryAdapterTest {
                 .expectError(RuntimeException.class)
                 .verify();
     }
+
+    @Test
+    void shouldGetLoanApplicationsPageableByStatuses2Successfully() {
+        Set<Integer> statuses = Set.of(STATUS_ID_1, 2);
+        int page = 0;
+        int size = 10;
+        String sortBy = AMOUNT;
+        String sortDirection = DESC;
+        
+        String firstLoanId = UUID.randomUUID().toString();
+        String secondLoanId = UUID.randomUUID().toString();
+        
+        LoanRequestEntity firstEntity = LoanRequestEntity.builder()
+                .requestId(firstLoanId)
+                .email(JOSE_EMAIL)
+                .amount(AMOUNT_75000)
+                .term(TERM_36)
+                .statusId(STATUS_ID_1)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .build();
+        
+        LoanRequestEntity secondEntity = LoanRequestEntity.builder()
+                .requestId(secondLoanId)
+                .email(MARIA_EMAIL)
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .statusId(STATUS_ID_1)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .build();
+        
+        when(repository.getAllByStatusIdIn(any(), any()))
+                .thenReturn(Flux.just(firstEntity, secondEntity));
+        
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getId().equals(firstLoanId) &&
+                    loanApp.getEmail().equals(JOSE_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_75000) &&
+                    loanApp.getStatus() != null &&
+                    loanApp.getLoanType() != null
+                )
+                .expectNextMatches(loanApp -> 
+                    loanApp.getId().equals(secondLoanId) &&
+                    loanApp.getEmail().equals(MARIA_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getStatus() != null &&
+                    loanApp.getLoanType() != null
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetLoanApplicationsPageableByStatuses2WithNullParameters() {
+        Set<Integer> statuses = Set.of(STATUS_ID_1);
+        
+        String loanId = UUID.randomUUID().toString();
+        
+        LoanRequestEntity entity = LoanRequestEntity.builder()
+                .requestId(loanId)
+                .email(CARLOS_EMAIL)
+                .amount(new BigDecimal("100000.00"))
+                .term(48)
+                .statusId(STATUS_ID_1)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .build();
+        
+        when(repository.getAllByStatusIdIn(any(), any()))
+                .thenReturn(Flux.just(entity));
+        
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, null, null, null, null);
+        
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getId().equals(loanId) &&
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(new BigDecimal("100000.00")) &&
+                    loanApp.getStatus() != null &&
+                    loanApp.getLoanType() != null
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnEmptyFluxWhenNoLoanApplicationsMatchStatuses2() {
+        Set<Integer> statuses = Set.of(99); // Non-existing status
+        int page = 0;
+        int size = 10;
+        String sortBy = EMAIL;
+        String sortDirection = ASC;
+        
+        when(repository.getAllByStatusIdIn(any(), any()))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        
+        StepVerifier.create(result)
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldHandleGetLoanApplicationsPageableByStatuses2Error() {
+        Set<Integer> statuses = Set.of(STATUS_ID_1);
+        int page = 0;
+        int size = 10;
+        String sortBy = AMOUNT;
+        String sortDirection = DESC;
+        RuntimeException error = new RuntimeException("Database query error");
+        
+        when(repository.getAllByStatusIdIn(any(), any()))
+                .thenReturn(Flux.error(error));
+        
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldCountLoanApplicationsByStatuses2Successfully() {
+        Set<Integer> statuses = Set.of(STATUS_ID_1, 2);
+        Long expectedCount = 7L;
+        
+        when(repository.countByStatusIdIn(statuses))
+                .thenReturn(Mono.just(expectedCount));
+        
+        Mono<Long> result = adapter.countLoanApplicationsByStatuses2(statuses);
+        
+        StepVerifier.create(result)
+                .expectNext(expectedCount)
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldCountLoanApplicationsByStatuses2WithEmptyStatuses() {
+        Set<Integer> emptyStatuses = Set.of();
+        Long expectedCount = 0L;
+        
+        when(repository.countByStatusIdIn(emptyStatuses))
+                .thenReturn(Mono.just(expectedCount));
+        
+        Mono<Long> result = adapter.countLoanApplicationsByStatuses2(emptyStatuses);
+        
+        StepVerifier.create(result)
+                .expectNext(expectedCount)
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldHandleCountLoanApplicationsByStatuses2Error() {
+        Set<Integer> statuses = Set.of(STATUS_ID_1);
+        RuntimeException error = new RuntimeException("Database connection error");
+        
+        when(repository.countByStatusIdIn(statuses))
+                .thenReturn(Mono.error(error));
+        
+        Mono<Long> result = adapter.countLoanApplicationsByStatuses2(statuses);
+        
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldValidateAndMapSortFieldCorrectly() {
+        Set<String> statuses = Set.of(PENDING_STATUS);
+        
+        // Test email sort field mapping
+        when(repository.findByStatusesPageable(statuses, EMAIL, ASC, 10, 0))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result1 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, EMAIL, "asc");
+        StepVerifier.create(result1).verifyComplete();
+        
+        // Test amount sort field mapping  
+        when(repository.findByStatusesPageable(statuses, AMOUNT, DESC, 5, 5))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result2 = adapter.getLoanApplicationsPageableByStatuses(statuses, 1, 5, AMOUNT, DESC);
+        StepVerifier.create(result2).verifyComplete();
+        
+        // Test term sort field mapping
+        when(repository.findByStatusesPageable(statuses, "term", ASC, 10, 0))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result3 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, "term", "asc");
+        StepVerifier.create(result3).verifyComplete();
+        
+        // Test status sort field mapping
+        when(repository.findByStatusesPageable(statuses, "status_name", ASC, 10, 0))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result4 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, "status", "asc");
+        StepVerifier.create(result4).verifyComplete();
+        
+        // Test default sort field mapping (null and invalid field)  
+        when(repository.findByStatusesPageable(statuses, "request_id", ASC, 10, 0))
+                .thenReturn(Flux.empty());
+        
+        Flux<LoanApplication> result5 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, null, "asc");
+        StepVerifier.create(result5).verifyComplete();
+        
+        Flux<LoanApplication> result6 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, "invalid_field", "asc");
+        StepVerifier.create(result6).verifyComplete();
+    }
 }

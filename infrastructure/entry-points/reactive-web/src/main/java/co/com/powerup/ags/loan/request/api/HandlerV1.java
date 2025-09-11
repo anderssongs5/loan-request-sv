@@ -4,8 +4,10 @@ import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
 import co.com.powerup.ags.loan.request.api.mapper.LoanRequestMapper;
+import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.MediaType;
@@ -23,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -95,57 +98,83 @@ public class HandlerV1 {
     }
 
     public Mono<ServerResponse> getLoanRequestsByStatuses(ServerRequest serverRequest) {
-        return Mono.fromCallable(() -> {
-                    Set<String> statuses = serverRequest.queryParam("statuses")
-                            .map(s -> Arrays.stream(s.split(","))
-                                    .map(String::trim)
-                                    .collect(Collectors.toSet()))
-                            .orElse(null);
-                    
-                    Integer page = validatePage(serverRequest.queryParam(PAGE_QUERY_PARAM).orElse(null));
-                    Integer size = validateSize(serverRequest.queryParam(SIZE_QUERY_PARAM).orElse(null));
-                    String sortBy = validateSortBy(serverRequest.queryParam(SORT_BY_QUERY_PARAM).orElse(null));
-                    String sortDirection = validateSortDirection(serverRequest.queryParam(SORT_DIRECTION_QUERY_PARAM).orElse(null));
-                    
-                    return GetLoanApplicationsByStatusesCommand.builder()
-                            .statuses(statuses)
-                            .page(page)
-                            .size(size)
-                            .sortBy(sortBy)
-                            .sortDirection(sortDirection)
-                            .build();
-                })
-                .flatMap(command -> loanApplicationUseCase.getLoanRequestsRequiringReview(command)
-                        .map(pagedResponse -> {
-                            List<LoanApplicationSummaryResponse> summaryList = pagedResponse.getContent()
-                                    .stream()
-                                    .map(LoanRequestMapper.INSTANCE::toSummaryResponse)
-                                    .toList();
-                            
-                            return SuccessResponse.builder()
-                                    .timestamp(LocalDateTime.now())
-                                    .path(serverRequest.path())
-                                    .data(Map.of(
-                                            "content", summaryList,
-                                            "pagination", pagedResponse.getPagination()
-                                    ))
-                                    .message("Loan requests requiring review retrieved successfully")
-                                    .build();
-                        })
+        return handleGetLoanRequestsByStatuses(serverRequest, loanApplicationUseCase::getLoanRequestsRequiringReview);
+    }
+    
+    public Mono<ServerResponse> getLoanRequestsByStatuses2(ServerRequest serverRequest) {
+        return handleGetLoanRequestsByStatuses(serverRequest, loanApplicationUseCase::getLoanRequestsRequiringReview2);
+    }
+    
+    private Mono<ServerResponse> handleGetLoanRequestsByStatuses(
+            ServerRequest serverRequest, 
+            Function<GetLoanApplicationsByStatusesCommand, Mono<PagedResponse<LoanRequestRequiringReview>>> useCaseHandler) {
+        return parseQueryParameters(serverRequest)
+                .flatMap(command -> useCaseHandler.apply(command)
+                        .map(pagedResponse -> buildGetByStatusesSuccessResponse(serverRequest, pagedResponse))
                         .flatMap(successResponse -> ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(successResponse))
                 )
                 .onErrorResume(IllegalArgumentException.class, ex -> 
-                        ServerResponse.badRequest()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(SuccessResponse.builder()
-                                        .timestamp(LocalDateTime.now())
-                                        .path(serverRequest.path())
-                                        .data(null)
-                                        .message("Validation error: " + ex.getMessage())
-                                        .build())
+                        buildErrorResponse(serverRequest, ex)
                 );
+    }
+    
+    private Mono<GetLoanApplicationsByStatusesCommand> parseQueryParameters(ServerRequest serverRequest) {
+        return Mono.fromCallable(() -> {
+            Set<String> statuses = serverRequest.queryParam("statuses")
+                    .map(s -> Arrays.stream(s.split(","))
+                            .map(String::trim)
+                            .collect(Collectors.toSet()))
+                    .orElse(null);
+            
+            String pageParam = serverRequest.queryParam(PAGE_QUERY_PARAM).orElse(null);
+            String sizeParam = serverRequest.queryParam(SIZE_QUERY_PARAM).orElse(null);
+            String sortByParam = serverRequest.queryParam(SORT_BY_QUERY_PARAM).orElse(null);
+            String sortDirectionParam = serverRequest.queryParam(SORT_DIRECTION_QUERY_PARAM).orElse(null);
+            
+            Integer page = validatePage(pageParam);
+            Integer size = validateSize(sizeParam);
+            String sortBy = validateSortBy(sortByParam);
+            String sortDirection = validateSortDirection(sortDirectionParam);
+            
+            return GetLoanApplicationsByStatusesCommand.builder()
+                    .statuses(statuses)
+                    .page(page)
+                    .size(size)
+                    .sortBy(sortBy)
+                    .sortDirection(sortDirection)
+                    .build();
+        });
+    }
+    
+    private SuccessResponse<Object> buildGetByStatusesSuccessResponse(ServerRequest serverRequest,
+                                                                      PagedResponse<LoanRequestRequiringReview> pagedResponse) {
+        List<LoanApplicationSummaryResponse> summaryList = pagedResponse.getContent()
+                .stream()
+                .map(LoanRequestMapper.INSTANCE::toSummaryResponse)
+                .toList();
+        
+        return SuccessResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .path(serverRequest.path())
+                .data(Map.of(
+                        "content", summaryList,
+                        "pagination", pagedResponse.getPagination()
+                ))
+                .message("Loan requests requiring review retrieved successfully")
+                .build();
+    }
+    
+    private Mono<ServerResponse> buildErrorResponse(ServerRequest serverRequest, IllegalArgumentException ex) {
+        return ServerResponse.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(SuccessResponse.builder()
+                        .timestamp(LocalDateTime.now())
+                        .path(serverRequest.path())
+                        .data(null)
+                        .message("Validation error: " + ex.getMessage())
+                        .build());
     }
     
     private Integer validatePage(String pageParam) {

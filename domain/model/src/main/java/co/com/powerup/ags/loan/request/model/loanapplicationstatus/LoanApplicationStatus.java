@@ -15,4 +15,8 @@ public class LoanApplicationStatus {
     private Integer id;
     private String name;
     private String description;
+    
+    public LoanApplicationStatus(Integer id) {
+        this.id = id;
+    }
 }

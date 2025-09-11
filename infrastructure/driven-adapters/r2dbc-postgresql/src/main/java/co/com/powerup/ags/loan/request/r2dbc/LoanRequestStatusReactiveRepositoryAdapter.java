@@ -6,6 +6,7 @@ import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestStatusEntity;
 import co.com.powerup.ags.loan.request.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
@@ -29,5 +30,10 @@ public class LoanRequestStatusReactiveRepositoryAdapter extends ReactiveAdapterO
     public Mono<LoanApplicationStatus> getByName(String name) {
         return super.findByExample(LoanApplicationStatus.builder().name(name).build())
                 .next();
+    }
+    
+    @Override
+    public Flux<LoanApplicationStatus> getAll() {
+        return super.findAll();
     }
 }

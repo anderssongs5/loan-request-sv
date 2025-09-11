@@ -23,4 +23,8 @@ public class LoanType {
     private Boolean automaticValidation;
     private Integer minTerm;
     private Integer maxTerm;
+    
+    public LoanType(Integer id) {
+        this.id = id;
+    }
 }
