@@ -1,0 +1,1 @@
+docker build -f ./deployment/Dockerfile -t loan-request-sv:1.0.0 .

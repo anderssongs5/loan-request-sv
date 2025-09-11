@@ -5,7 +5,7 @@ import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
 import co.com.powerup.ags.loan.request.api.mapper.LoanRequestMapper;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.command.GetLoanApplicationsByStatusesCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.MediaType;
