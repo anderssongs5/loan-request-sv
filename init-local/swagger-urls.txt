@@ -1,0 +1,2 @@
+UI: http://localhost:8081/webjars/swagger-ui/index.html#/
+YAML File: http://localhost:8081/v3/api-docs.yaml

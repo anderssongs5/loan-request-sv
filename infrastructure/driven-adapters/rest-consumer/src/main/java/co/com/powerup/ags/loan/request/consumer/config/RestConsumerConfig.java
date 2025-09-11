@@ -21,8 +21,8 @@ public class RestConsumerConfig {
 
     private final int timeout;
 
-    public RestConsumerConfig(@Value("${adapter.restconsumer.url}") String url,
-                              @Value("${adapter.restconsumer.timeout}") int timeout) {
+    public RestConsumerConfig(@Value("${adapters.restconsumer.url}") String url,
+                              @Value("${adapters.restconsumer.timeout}") int timeout) {
         this.url = url;
         this.timeout = timeout;
     }

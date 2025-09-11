@@ -1,26 +1,39 @@
 package co.com.powerup.ags.loan.request.api.config;
 
-import co.com.powerup.ags.loan.request.api.Handler;
+import co.com.powerup.ags.loan.request.api.HandlerV1;
 import co.com.powerup.ags.loan.request.api.RouterRest;
+import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
 
-@ContextConfiguration(classes = {RouterRest.class, Handler.class})
+import java.math.BigDecimal;
+
+@ContextConfiguration(classes = {RouterRest.class, HandlerV1.class})
 @WebFluxTest
 @Import({CorsConfig.class, SecurityHeadersConfig.class})
 class ConfigTest {
 
     @Autowired
     private WebTestClient webTestClient;
+    
+    @MockitoBean
+    private LoanApplicationUseCase loanApplicationUseCase;
 
     @Test
     void corsConfigurationShouldAllowOrigins() {
+        Mockito.when(loanApplicationUseCase.getAllLoanRequests()).thenReturn(Flux.just(new LoanApplication("", BigDecimal.ONE,
+                1, "", null, null)));
+        
         webTestClient.get()
-                .uri("/api/usecase/path")
+                .uri("/api/v1/loan-requests")
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().valueEquals("Content-Security-Policy",
