@@ -1,13 +1,17 @@
 package co.com.powerup.ags.loan.request.api;
 
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
+import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.model.loanapplication.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
+import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.command.CreateLoanRequestCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.command.GetLoanApplicationsByStatusesCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,28 +19,43 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.reactive.function.server.MockServerRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import reactor.util.context.Context;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HandlerV1Test {
     
-    private static final String CARLOS_EMAIL = "carlos.rodriguez@example.com";
-    private static final String MARIA_EMAIL = "maria.fernandez@example.com";
+    private static final String JOSE_EMAIL = "jose.garcia@example.com";
+    private static final String MARIA_EMAIL = "maria.rodriguez@example.com";
+    private static final String CARLOS_EMAIL = "carlos.lopez@example.com";
     private static final BigDecimal AMOUNT_50000 = new BigDecimal("50000.00");
     private static final BigDecimal AMOUNT_75000 = new BigDecimal("75000.00");
+    private static final BigDecimal SALARY_5000 = new BigDecimal("5000.00");
+    private static final BigDecimal SALARY_7500 = new BigDecimal("7500.00");
     private static final Integer TERM_24 = 24;
     private static final Integer TERM_36 = 36;
     private static final String VALID_USER_ID = "12345678";
@@ -45,6 +64,7 @@ class HandlerV1Test {
     public static final String API_PATH = "/api/v1/loan-requests";
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON_VALUE = "application/json";
+    private static final String TEST_USERNAME = "testuser@example.com";
     
     @Mock
     private LoanApplicationUseCase loanApplicationUseCase;
@@ -86,6 +106,14 @@ class HandlerV1Test {
                 .status(pendingStatus)
                 .loanType(personalLoanType)
                 .build();
+    }
+    
+    private Context getSecurityContext() {
+        SecurityContext securityContext = new SecurityContextImpl();
+        UsernamePasswordAuthenticationToken authentication = 
+            new UsernamePasswordAuthenticationToken(TEST_USERNAME, null, null);
+        securityContext.setAuthentication(authentication);
+        return ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext));
     }
 
     @Test
@@ -154,7 +182,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectNextMatches(serverResponse -> {
                     assertEquals(200, serverResponse.statusCode().value());
                     return true;
@@ -178,7 +206,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -199,7 +227,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -220,7 +248,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -241,7 +269,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -262,7 +290,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -283,7 +311,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -304,7 +332,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -325,7 +353,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -346,7 +374,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(IllegalArgumentException.class)
                 .verify();
     }
@@ -370,7 +398,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(UserNotFoundException.class)
                 .verify();
     }
@@ -394,7 +422,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(UserServiceException.class)
                 .verify();
     }
@@ -418,7 +446,7 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(UserValidationException.class)
                 .verify();
     }
@@ -442,8 +470,242 @@ class HandlerV1Test {
 
         Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
 
-        StepVerifier.create(response)
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
                 .expectError(RuntimeException.class)
                 .verify();
+    }
+    
+    @Test
+    void shouldCreateLoanRequestWithCreatedByFromAuthentication() {
+        CreateLoanRequestDto requestDto = CreateLoanRequestDto.builder()
+                .userIdNumber(VALID_USER_ID)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .build();
+
+        when(loanApplicationUseCase.createLoanRequest(argThat(command -> 
+                command.getCreatedBy() != null && command.getCreatedBy().equals(TEST_USERNAME))))
+                .thenReturn(Mono.just(sampleLoanApplication));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH))
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.createLoanRequest(request);
+
+        StepVerifier.create(response.contextWrite(getSecurityContext()))
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldGetLoanRequestsByStatusesWithDefaultParameters() {
+        LoanRequestRequiringReview loanRequest1 = createSampleLoanRequestRequiringReview(
+                JOSE_EMAIL, "José", "García", AMOUNT_50000, TERM_24, SALARY_5000);
+        LoanRequestRequiringReview loanRequest2 = createSampleLoanRequestRequiringReview(
+                MARIA_EMAIL, "María", "Rodríguez", AMOUNT_75000, TERM_36, SALARY_7500);
+        
+        PagedResponse<LoanRequestRequiringReview> pagedResponse = PagedResponse.of(
+                List.of(loanRequest1, loanRequest2), 0, 10, 2L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(pagedResponse));
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetLoanRequestsByStatusesWithCustomParameters() {
+        LoanRequestRequiringReview loanRequest = createSampleLoanRequestRequiringReview(
+                CARLOS_EMAIL, "Carlos", "López", AMOUNT_75000, TERM_36, SALARY_7500);
+        
+        PagedResponse<LoanRequestRequiringReview> pagedResponse = PagedResponse.of(
+                List.of(loanRequest), 1, 5, 8L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(pagedResponse));
+        
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("statuses", "PENDING,MANUAL_REVIEW");
+        queryParams.put("page", "2");
+        queryParams.put("size", "5");
+        queryParams.put("sortBy", "amount");
+        queryParams.put("sortDirection", "desc");
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "?statuses=PENDING,MANUAL_REVIEW&page=2&size=5&sortBy=amount&sortDirection=desc"))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenPageValidationFails() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.of("0"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSizeValidationFails() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.of("101"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSortByValidationFails() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.of("invalidField"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenSortDirectionValidationFails() {
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.empty());
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.empty());
+        when(request.queryParam("sortDirection")).thenReturn(Optional.of("invalid"));
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnBadRequestWhenStatusValidationFails() {
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.error(new IllegalArgumentException("Invalid status: INVALID")));
+        
+        ServerRequest request = mock(ServerRequest.class);
+        when(request.queryParam("statuses")).thenReturn(Optional.of("INVALID,PENDING"));
+        when(request.queryParam("page")).thenReturn(Optional.empty());
+        when(request.queryParam("size")).thenReturn(Optional.empty());
+        when(request.queryParam("sortBy")).thenReturn(Optional.empty());
+        when(request.queryParam("sortDirection")).thenReturn(Optional.empty());
+        when(request.path()).thenReturn(API_PATH);
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(400, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldGetEmptyLoanRequestsByStatuses() {
+        PagedResponse<LoanRequestRequiringReview> emptyPagedResponse = PagedResponse.of(
+                List.of(), 0, 10, 0L);
+        
+        when(loanApplicationUseCase.getLoanRequestsRequiringReview(any(GetLoanApplicationsByStatusesCommand.class)))
+                .thenReturn(Mono.just(emptyPagedResponse));
+        
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH))
+                .build();
+        
+        Mono<ServerResponse> response = handlerV1.getLoanRequestsByStatuses(request);
+        
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+    
+    private LoanRequestRequiringReview createSampleLoanRequestRequiringReview(
+            String email, String firstName, String lastName, 
+            BigDecimal amount, Integer term, BigDecimal baseSalary) {
+        
+        LoanApplication loanApplication = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email(email)
+                .amount(amount)
+                .term(term)
+                .status(pendingStatus)
+                .loanType(personalLoanType)
+                .build();
+        
+        User user = User.builder()
+                .id(UUID.randomUUID().toString())
+                .email(email)
+                .name(firstName)
+                .lastName(lastName)
+                .baseSalary(baseSalary)
+                .phoneNumber("+57300123456")
+                .address("Calle 123 # 45-67, Bogotá")
+                .birthDate(LocalDate.of(1985, 6, 15))
+                .idNumber("12345678")
+                .build();
+        
+        return new LoanRequestRequiringReview(loanApplication, user);
     }
 }

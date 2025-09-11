@@ -8,12 +8,14 @@ public class CreateLoanRequestCommand {
     private final Integer loanTypeId;
     private final BigDecimal amount;
     private final Integer term;
+    private final String createdBy;
     
     private CreateLoanRequestCommand(Builder builder) {
         this.userIdNumber = builder.userIdNumber;
         this.loanTypeId = builder.loanTypeId;
         this.amount = builder.amount;
         this.term = builder.term;
+        this.createdBy = builder.createdBy;
     }
     
     public String getUserIdNumber() {
@@ -32,6 +34,10 @@ public class CreateLoanRequestCommand {
         return term;
     }
     
+    public String getCreatedBy() {
+        return createdBy;
+    }
+    
     public static Builder builder() {
         return new Builder();
     }
@@ -41,6 +47,7 @@ public class CreateLoanRequestCommand {
         private Integer loanTypeId;
         private BigDecimal amount;
         private Integer term;
+        private String createdBy;
         
         private Builder() {}
         
@@ -61,6 +68,11 @@ public class CreateLoanRequestCommand {
         
         public Builder term(Integer term) {
             this.term = term;
+            return this;
+        }
+        
+        public Builder createdBy(String createdBy) {
+            this.createdBy = createdBy;
             return this;
         }
         

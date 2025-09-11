@@ -13,6 +13,10 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 @Repository
 public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperations<
         LoanApplication,
@@ -20,7 +24,7 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
         String,
         LoanRequestReactiveRepository
 > implements LoanApplicationRepository {
-
+    
     private static final Logger log = LoggerFactory.getLogger(LoanRequestReactiveRepositoryAdapter.class);
     private final TransactionalOperator transactionalOperator;
 
@@ -58,5 +62,37 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
                 .doOnComplete(() -> log.info("Successfully retrieved all loan requests"))
                 .doOnError(error -> log.error("Error retrieving loan requests", error))
                 .map(LoanApplicationMapper.INSTANCE::toDomain);
+    }
+    
+    @Override
+    public Flux<LoanApplication> getLoanApplicationsPageableByStatuses(Set<String> statuses, Integer page, Integer size, String sortBy, String sortDirection) {
+        log.info("Retrieving loan applications by statuses: {}, page: {}, size: {}, sortBy: {}, sortDirection: {}", 
+                statuses, page, size, sortBy, sortDirection);
+        
+        page = Optional.ofNullable(page).orElse(0);
+        size = Optional.ofNullable(size).orElse(10);
+        sortDirection = Optional.ofNullable(sortDirection).orElse("asc").toUpperCase();
+        Integer offset = page * size;
+
+        List<String> allowedSortFields = List.of("email", "term", "amount", "status");
+        if (sortBy == null || !allowedSortFields.contains(sortBy)) {
+            sortBy = "request_id";
+        }
+        
+        return repository.findByStatusesPageable(statuses, sortBy, sortDirection, size, offset)
+                .doOnSubscribe(subscription -> log.debug("Starting to fetch loan requests with pagination from database"))
+                .doOnComplete(() -> log.info("Successfully retrieved paginated loan requests"))
+                .doOnError(error -> log.error("Error retrieving paginated loan requests", error))
+                .map(LoanApplicationMapper.INSTANCE::toDomain);
+    }
+    
+    @Override
+    public Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses) {
+        log.info("Counting loan applications by statuses: {}", statuses);
+        
+        return repository.countByStatuses(statuses)
+                .doOnSubscribe(subscription -> log.debug("Starting to count loan requests by statuses"))
+                .doOnNext(count -> log.info("Found {} loan applications matching statuses: {}", count, statuses))
+                .doOnError(error -> log.error("Error counting loan applications by statuses", error));
     }
 }

@@ -1,5 +1,7 @@
 package co.com.powerup.ags.loan.request.api.helper;
 
+import co.com.powerup.ags.loan.request.api.exception.UnauthorizedException;
+import co.com.powerup.ags.loan.request.api.exception.AccessDeniedException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.BusinessException;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
@@ -42,6 +44,16 @@ public class GlobalErrorAttributes extends DefaultErrorAttributes {
             case UserValidationException userValidationException ->
                     setErrorAttributes(errorAttributes, HttpStatus.BAD_REQUEST, INVALID_INPUT,
                             BAD_REQUEST, error.getMessage(), path);
+            case UnauthorizedException unauthorizedException -> {
+                log.warn("Authorization failed", unauthorizedException);
+                setErrorAttributes(errorAttributes, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
+                        "Unauthorized", "Authorization is invalid", path);
+            }
+            case AccessDeniedException accessDeniedException -> {
+                log.warn("Access denied", accessDeniedException);
+                setErrorAttributes(errorAttributes, HttpStatus.FORBIDDEN, "ACCESS_DENIED",
+                        "Forbidden", "Access denied. You don't have sufficient permissions to access this resource.", path);
+            }
             case UserServiceException userServiceException -> {
                 log.error("Error calling the user service", userServiceException);
                 setErrorAttributes(errorAttributes, HttpStatus.SERVICE_UNAVAILABLE, "USER_SERVICE_UNAVAILABLE",

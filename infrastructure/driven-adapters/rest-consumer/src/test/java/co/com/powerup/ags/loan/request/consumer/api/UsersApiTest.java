@@ -35,15 +35,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UsersApiTest {
 
-    private static final String CARLOS_EMAIL = "carlos.rodriguez@ejemplo.com";
-    private static final String MARIA_EMAIL = "maria.fernandez@ejemplo.com";
-    private static final String CARLOS_NAME = "Carlos";
-    private static final String CARLOS_LASTNAME = "Rodriguez";
-    private static final String MARIA_NAME = "Maria";
-    private static final String MARIA_LASTNAME = "Fernandez";
+    private static final String JOSE_EMAIL = "jose.garcia@ejemplo.com";
+    private static final String MARIA_EMAIL = "maria.rodriguez@ejemplo.com";
+    private static final String JOSE_NAME = "José";
+    private static final String JOSE_LASTNAME = "García";
+    private static final String MARIA_NAME = "María";
+    private static final String MARIA_LASTNAME = "Rodríguez";
     private static final String VALID_USER_ID_1 = "12345678";
     private static final String VALID_USER_ID_2 = "87654321";
-    private static final String INVALID_USER_ID = "99999999";
     private static final BigDecimal BASE_SALARY_5000 = new BigDecimal("5000.00");
     private static final BigDecimal BASE_SALARY_6000 = new BigDecimal("6000.00");
     private static final String ADDRESS_BOGOTA = "Calle 123, Bogota";
@@ -54,6 +53,7 @@ class UsersApiTest {
     private static final LocalDate BIRTH_DATE_1985 = LocalDate.of(1985, 5, 15);
     private static final String SUCCESS_MESSAGE = "User retrieved successfully";
     private static final String API_PATH = "/api/v1/users/search";
+    private static final String FALLBACK_TOKEN = "fallback-token";
 
     @Mock
     private WebClient webClient;
@@ -85,9 +85,9 @@ class UsersApiTest {
         String userId = UUID.randomUUID().toString();
         User expectedUser = User.builder()
                 .id(userId)
-                .name(CARLOS_NAME)
-                .lastName(CARLOS_LASTNAME)
-                .email(CARLOS_EMAIL)
+                .name(JOSE_NAME)
+                .lastName(JOSE_LASTNAME)
+                .email(JOSE_EMAIL)
                 .idNumber(VALID_USER_ID_1)
                 .baseSalary(BASE_SALARY_5000)
                 .address(ADDRESS_BOGOTA)
@@ -110,6 +110,7 @@ class UsersApiTest {
         });
         
         
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
         when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
         
         when(mockRequestBodyUriSpec2.exchangeToMono(any())).thenAnswer(invocation -> {
@@ -120,13 +121,13 @@ class UsersApiTest {
             return handler.apply(clientResponse);
         });
 
-        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberRequest(VALID_USER_ID_1);
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(VALID_USER_ID_1, null, FALLBACK_TOKEN);
 
         StepVerifier.create(result)
                 .expectNextMatches(response ->
                     response.getData().getId().equals(userId) &&
-                    response.getData().getName().equals(CARLOS_NAME) &&
-                    response.getData().getEmail().equals(CARLOS_EMAIL) &&
+                    response.getData().getName().equals(JOSE_NAME) &&
+                    response.getData().getEmail().equals(JOSE_EMAIL) &&
                     response.getData().getIdNumber().equals(VALID_USER_ID_1)
                 )
                 .verifyComplete();
@@ -136,6 +137,7 @@ class UsersApiTest {
     void shouldReturnEmptyWhenUserNotFound() {
         when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
         when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
         when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
         when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
             Function<ClientResponse, Mono<?>> handler = invocation.getArgument(0);
@@ -144,7 +146,7 @@ class UsersApiTest {
             return handler.apply(clientResponse);
         });
         
-        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberRequest(INVALID_USER_ID);
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(VALID_USER_ID_1, null, FALLBACK_TOKEN);
         
         StepVerifier.create(result)
                 .expectNextCount(0)
@@ -157,6 +159,7 @@ class UsersApiTest {
         
         when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
         when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
         when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
         when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
             Function<ClientResponse, Mono<?>> handler = invocation.getArgument(0);
@@ -166,7 +169,7 @@ class UsersApiTest {
             return handler.apply(clientResponse);
         });
         
-        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberRequest(INVALID_USER_ID);
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(VALID_USER_ID_1, null, FALLBACK_TOKEN);
         
         StepVerifier.create(result)
                 .expectError(UserValidationException.class)
@@ -177,6 +180,7 @@ class UsersApiTest {
     void shouldThrowUserServiceExceptionOn5xxServerError() {
         when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
         when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
         when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
         
         when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
@@ -186,7 +190,7 @@ class UsersApiTest {
             return handler.apply(clientResponse);
         });
 
-        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberRequest(VALID_USER_ID_1);
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(VALID_USER_ID_1, null, FALLBACK_TOKEN);
 
         StepVerifier.create(result)
                 .expectError(UserServiceException.class)
@@ -234,11 +238,203 @@ class UsersApiTest {
     void shouldHandleWebClientGeneralError() {
         when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
         when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
         when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
         when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class)))
                 .thenReturn(Mono.error(new RuntimeException("Connection timeout")));
 
-        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberRequest(VALID_USER_ID_1);
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(VALID_USER_ID_1, null, FALLBACK_TOKEN);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldGetUserByEmailSuccessfully() {
+        String userId = UUID.randomUUID().toString();
+        String email = "maria.rodriguez@ejemplo.com";
+        User expectedUser = User.builder()
+                .id(userId)
+                .name(MARIA_NAME)
+                .lastName(MARIA_LASTNAME)
+                .email(email)
+                .idNumber(VALID_USER_ID_2)
+                .baseSalary(BASE_SALARY_6000)
+                .address(ADDRESS_MEDELLIN)
+                .phoneNumber(PHONE_NUMBER_2)
+                .birthDate(BIRTH_DATE_1985)
+                .build();
+
+        SuccessResponse<User> successResponse = new SuccessResponse<>();
+        successResponse.setData(expectedUser);
+        successResponse.setMessage(SUCCESS_MESSAGE);
+        successResponse.setTimestamp(LocalDateTime.now());
+        successResponse.setPath(API_PATH);
+
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenAnswer(invocation -> {
+            Function<UriBuilder, URI> uriFunction = invocation.getArgument(0);
+            URI uri = uriFunction.apply(new DefaultUriBuilderFactory().builder());
+            return mockRequestBodySpec;
+        });
+        
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        
+        when(mockRequestBodyUriSpec2.exchangeToMono(any())).thenAnswer(invocation -> {
+            Function<ClientResponse, Mono<SuccessResponse<User>>> handler = invocation.getArgument(0);
+            ClientResponse clientResponse = mock(ClientResponse.class);
+            when(clientResponse.statusCode()).thenReturn(HttpStatus.OK);
+            when(clientResponse.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.just(successResponse));
+            return handler.apply(clientResponse);
+        });
+
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(null, email, FALLBACK_TOKEN);
+
+        StepVerifier.create(result)
+                .expectNextMatches(response ->
+                    response.getData().getId().equals(userId) &&
+                    response.getData().getName().equals(MARIA_NAME) &&
+                    response.getData().getEmail().equals(email) &&
+                    response.getData().getIdNumber().equals(VALID_USER_ID_2)
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldReturnEmptyWhenUserNotFoundByEmail() {
+        String email = "notfound@ejemplo.com";
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
+            Function<ClientResponse, Mono<?>> handler = invocation.getArgument(0);
+            ClientResponse clientResponse = mock(ClientResponse.class);
+            when(clientResponse.statusCode()).thenReturn(HttpStatus.NOT_FOUND);
+            return handler.apply(clientResponse);
+        });
+        
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(null, email, FALLBACK_TOKEN);
+        
+        StepVerifier.create(result)
+                .expectNextCount(0)
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldThrowUserValidationExceptionOn4xxClientErrorForEmail() {
+        String email = "invalid.email@ejemplo.com";
+        ErrorResponse errorResponse = ErrorResponse.builder().message("Invalid email format.").build();
+        
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
+            Function<ClientResponse, Mono<?>> handler = invocation.getArgument(0);
+            ClientResponse clientResponse = mock(ClientResponse.class);
+            when(clientResponse.statusCode()).thenReturn(HttpStatus.BAD_REQUEST);
+            when(clientResponse.bodyToMono(ErrorResponse.class)).thenReturn(Mono.just(errorResponse));
+            return handler.apply(clientResponse);
+        });
+        
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(null, email, FALLBACK_TOKEN);
+        
+        StepVerifier.create(result)
+                .expectError(UserValidationException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldThrowUserServiceExceptionOn5xxServerErrorForEmail() {
+        String email = "jose.garcia@ejemplo.com";
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        
+        when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class))).thenAnswer(invocation -> {
+            Function<ClientResponse, Mono<?>> handler = invocation.getArgument(0);
+            ClientResponse clientResponse = mock(ClientResponse.class);
+            when(clientResponse.statusCode()).thenReturn(HttpStatus.INTERNAL_SERVER_ERROR);
+            return handler.apply(clientResponse);
+        });
+
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(null, email, FALLBACK_TOKEN);
+
+        StepVerifier.create(result)
+                .expectError(UserServiceException.class)
+                .verify();
+    }
+    
+    @Test
+    void shouldGetUserByBothIdNumberAndEmailSuccessfully() {
+        String userId = UUID.randomUUID().toString();
+        String idNumber = "11223344";
+        String email = "carlos.lopez@ejemplo.com";
+        User expectedUser = User.builder()
+                .id(userId)
+                .name("Carlos")
+                .lastName("López")
+                .email(email)
+                .idNumber(idNumber)
+                .baseSalary(new BigDecimal("7500.00"))
+                .address("Avenida 789, Cali")
+                .phoneNumber("3005551234")
+                .birthDate(LocalDate.of(1992, 8, 10))
+                .build();
+
+        SuccessResponse<User> successResponse = new SuccessResponse<>();
+        successResponse.setData(expectedUser);
+        successResponse.setMessage(SUCCESS_MESSAGE);
+        successResponse.setTimestamp(LocalDateTime.now());
+        successResponse.setPath(API_PATH);
+
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenAnswer(invocation -> {
+            Function<UriBuilder, URI> uriFunction = invocation.getArgument(0);
+            URI uri = uriFunction.apply(new DefaultUriBuilderFactory().builder());
+            return mockRequestBodySpec;
+        });
+        
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        
+        when(mockRequestBodyUriSpec2.exchangeToMono(any())).thenAnswer(invocation -> {
+            Function<ClientResponse, Mono<SuccessResponse<User>>> handler = invocation.getArgument(0);
+            ClientResponse clientResponse = mock(ClientResponse.class);
+            when(clientResponse.statusCode()).thenReturn(HttpStatus.OK);
+            when(clientResponse.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.just(successResponse));
+            return handler.apply(clientResponse);
+        });
+
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(idNumber, email, FALLBACK_TOKEN);
+
+        StepVerifier.create(result)
+                .expectNextMatches(response ->
+                    response.getData().getId().equals(userId) &&
+                    response.getData().getName().equals("Carlos") &&
+                    response.getData().getEmail().equals(email) &&
+                    response.getData().getIdNumber().equals(idNumber)
+                )
+                .verifyComplete();
+    }
+    
+    @Test
+    void shouldHandleWebClientGeneralErrorForEmail() {
+        String email = "jose.garcia@ejemplo.com";
+        when(webClient.method(HttpMethod.GET)).thenReturn(mockRequestBodyUriSpec);
+        when(mockRequestBodyUriSpec.uri(any(Function.class))).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.header(any(), any())).thenReturn(mockRequestBodySpec);
+        when(mockRequestBodySpec.accept(any())).thenReturn(mockRequestBodyUriSpec2);
+        when(mockRequestBodyUriSpec2.exchangeToMono(any(Function.class)))
+                .thenReturn(Mono.error(new RuntimeException("Connection timeout")));
+
+        Mono<SuccessResponse<User>> result = usersApi.getUserByIdNumberOrEmailRequest(null, email, FALLBACK_TOKEN);
 
         StepVerifier.create(result)
                 .expectError(RuntimeException.class)

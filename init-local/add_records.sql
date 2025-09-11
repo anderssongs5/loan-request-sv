@@ -4,7 +4,8 @@ INSERT INTO loan_request_statuses (name, description) VALUES
 ('APPROVED', 'Request has been approved'),
 ('REJECTED', 'Request has been rejected'),
 ('DISBURSED', 'Loan amount has been disbursed'),
-('CANCELLED', 'Request was cancelled by user');
+('CANCELLED', 'Request was cancelled by user'),
+('MANUAL_REVIEW', 'Request requires manual review');
 
 INSERT INTO loan_types (name, minimum_amount, maximum_amount, minimum_term, maximum_term, interest_rate, automatic_validation) VALUES
 ('PERSONAL_LOAN', 1000.00, 50000.00, 6, 60, 0.1250, FALSE),

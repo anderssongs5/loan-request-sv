@@ -4,9 +4,16 @@ import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Set;
+
 public interface LoanApplicationRepository {
     
     Mono<LoanApplication> createLoanRequest(LoanApplication loanApplication);
     
     Flux<LoanApplication> getAllLoanRequests();
+    
+    Flux<LoanApplication> getLoanApplicationsPageableByStatuses(Set<String> statuses, Integer page, Integer size,
+                                                                String sortBy, String sortDirection);
+    
+    Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses);
 }

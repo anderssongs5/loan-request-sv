@@ -57,3 +57,5 @@ adapters:
   restconsumer:
     timeout: 5000
     url: "http://localhost:8080"
+security:
+  introspectionBaseUrl: "http://localhost:8080"

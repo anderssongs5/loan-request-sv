@@ -4,6 +4,8 @@ import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.ErrorResponse;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -30,13 +32,81 @@ public class RouterRest {
             path = "/api/v1/loan-requests",
             method = RequestMethod.GET,
             operation = @Operation(
-                summary = "Get all loan requests",
-                description = "Retrieve a list of all loan requests",
-                operationId = "listLoanRequests",
+                tags = {"Loan Request"},
+                summary = "Get loan requests requiring review",
+                description = """
+                    Retrieve paginated and filterable loan requests that require review.
+                    
+                    Returns a paginated response with detailed pagination metadata including total count, page information, and navigation flags.
+                    Supports filtering by status, pagination, and sorting. Only ADVISOR role can access this endpoint.
+                    
+                    Response Structure:
+                    - content: Array of loan application data
+                    - pagination: Metadata object containing:
+                      * currentPage: Current page number (0-based)
+                      * pageSize: Number of items per page
+                      * totalElements: Total number of matching records
+                      * totalPages: Total number of pages
+                      * numberOfElements: Number of items in current page
+                      * hasNext/hasPrevious: Navigation flags
+                      * first/last: Position flags
+                    
+                    Query Parameters:
+                    - statuses: Comma-separated list of statuses to filter by (PENDING, REJECTED, MANUAL_REVIEW). Defaults to all allowed statuses if not provided.
+                    - page: Page number (1-based). Default: 1
+                    - size: Number of items per page (1-100). Default: 10
+                    - sortBy: Field to sort by (amount, term, email, status). Default: request_id
+                    - sortDirection: Sort direction (asc, desc). Default: asc
+                    
+                    Example: /api/v1/loan-requests?statuses=PENDING,REJECTED&page=1&size=20&sortBy=amount&sortDirection=desc
+                    """,
+                operationId = "getLoanRequestsByStatuses",
+                parameters = {
+                    @Parameter(
+                        name = "statuses",
+                        description = "Comma-separated list of loan application statuses to filter by. Valid values: PENDING, REJECTED, MANUAL_REVIEW",
+                        example = "PENDING,REJECTED",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                        name = "page",
+                        description = "Page number (0-based)",
+                        example = "0",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", minimum = "0")
+                    ),
+                    @Parameter(
+                        name = "size",
+                        description = "Number of items per page",
+                        example = "10",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", minimum = "1", maximum = "100")
+                    ),
+                    @Parameter(
+                        name = "sortBy",
+                        description = "Field to sort by",
+                        example = "amount",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "string", allowableValues = {"amount", "term", "email", "status"})
+                    ),
+                    @Parameter(
+                        name = "sortDirection",
+                        description = "Sort direction",
+                        example = "asc",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "string", allowableValues = {"asc", "desc"})
+                    )
+                },
                 responses = {
                     @ApiResponse(
                         responseCode = "200",
-                        description = "Loan requests retrieved successfully",
+                        description = "Loan requests requiring review retrieved successfully",
                         content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = SuccessResponse.class),
@@ -44,35 +114,73 @@ public class RouterRest {
                                 name = "Success Response",
                                 value = """
                                 {
-                                  "timestamp": "2025-08-30T14:30:00.123456",
-                                  "path": "/api/v1/loan-requests",
-                                  "data": [
-                                    {
-                                      "id": "123e4567-e89b-12d3-a456-426614174000",
-                                      "email": "andersson.garcia@example.com",
-                                      "term": 24,
-                                      "amount": 50000.00,
-                                      "loanStatusId": 1,
-                                      "loanTypeId": "1"
-                                    },
-                                    {
-                                      "id": "456e7890-e89b-12d3-a456-426614174001",
-                                      "email": "carlos.rodriguez@example.com",
-                                      "term": 12,
-                                      "amount": 25000.00,
-                                      "loanStatusId": 1,
-                                      "loanTypeId": "2"
+                                  "timestamp": "2025-09-10T14:30:00.123456",
+                                  "path": "/api/v1/loan-requests?statuses=PENDING&page=1&size=10&sortBy=amount&sortDirection=asc",
+                                  "data": {
+                                    "content": [
+                                      {
+                                        "amount": 25000.00,
+                                        "term": 12,
+                                        "email": "user1@example.com",
+                                        "name": "",
+                                        "loanType": "Personal",
+                                        "interestRate": 12.5,
+                                        "applicationStatus": "PENDING",
+                                        "baseSalary": null,
+                                        "monthlyPaymentAmount": null
+                                      },
+                                      {
+                                        "amount": 50000.00,
+                                        "term": 24,
+                                        "email": "user2@example.com",
+                                        "name": "",
+                                        "loanType": "Mortgage",
+                                        "interestRate": 8.75,
+                                        "applicationStatus": "PENDING",
+                                        "baseSalary": null,
+                                        "monthlyPaymentAmount": null
+                                      }
+                                    ],
+                                    "pagination": {
+                                      "currentPage": 0,
+                                      "pageSize": 10,
+                                      "totalElements": 25,
+                                      "totalPages": 3,
+                                      "numberOfElements": 2,
+                                      "hasNext": true,
+                                      "hasPrevious": false,
+                                      "first": true,
+                                      "last": false
                                     }
-                                  ],
-                                  "message": "Loan requests retrieved successfully"
+                                  },
+                                  "message": "Loan requests requiring review retrieved successfully"
                                 }
                                 """
                             )
                         )
                     ),
                     @ApiResponse(
-                        responseCode = "500",
-                        description = "Internal server error",
+                        responseCode = "400",
+                        description = "Bad Request - Invalid status values or query parameters",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Validation Error Response",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-10T14:30:00.123456",
+                                  "path": "/api/v1/loan-requests",
+                                  "data": null,
+                                  "message": "Validation error: Invalid status: INVALID_STATUS. Allowed statuses are: [PENDING, REJECTED, MANUAL_REVIEW]"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "403",
+                        description = "Access denied - ADVISOR role required",
                         content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class)
@@ -85,6 +193,7 @@ public class RouterRest {
             path = "/api/v1/loan-requests",
             method = RequestMethod.POST,
             operation = @Operation(
+                tags = {"Loan Request"},
                 summary = "Create a new loan request",
                 description = "Create a new loan request for a user",
                 operationId = "createLoanRequest",
@@ -152,7 +261,7 @@ public class RouterRest {
         )
     })
     public RouterFunction<ServerResponse> routerFunction(HandlerV1 handlerV1) {
-        return route(GET("/api/v1/loan-requests"), handlerV1::listLoanRequests)
+        return route(GET("/api/v1/loan-requests"), handlerV1::getLoanRequestsByStatuses)
                 .andRoute(POST("/api/v1/loan-requests"), handlerV1::createLoanRequest);
     }
 }
