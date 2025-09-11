@@ -1,5 +1,6 @@
-package co.com.powerup.ags.loan.request.model.loanapplication;
+package co.com.powerup.ags.loan.request.usecase.loanapplication.dto;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.model.user.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,7 +38,7 @@ public class LoanRequestRequiringReview {
         this.interestRate = loanApplication.getLoanType().getInterestRate();
         this.baseSalary = user.getBaseSalary();
         // (amount + (amount*interestRate))/term
-        this.monthlyPaymentAmount = (amount.add(amount.divide(this.interestRate, 4, RoundingMode.HALF_EVEN)))
+        this.monthlyPaymentAmount = (amount.add(amount.multiply(this.interestRate)))
                 .divide(BigDecimal.valueOf(this.term), 2, RoundingMode.HALF_EVEN);
     }
 }

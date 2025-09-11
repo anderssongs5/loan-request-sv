@@ -4,11 +4,11 @@ import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.LoanRequestResponseDto;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanRequestRequiringReview;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.user.User;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.command.CreateLoanRequestCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

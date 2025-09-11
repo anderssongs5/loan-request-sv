@@ -1,4 +1,4 @@
-package co.com.powerup.ags.loan.request.usecase.loanapplication.command;
+package co.com.powerup.ags.loan.request.usecase.loanapplication.dto;
 
 import java.math.BigDecimal;
 
