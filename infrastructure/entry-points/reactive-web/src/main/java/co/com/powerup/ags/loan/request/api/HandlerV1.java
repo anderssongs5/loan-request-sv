@@ -3,11 +3,14 @@ package co.com.powerup.ags.loan.request.api;
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
+import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.mapper.LoanRequestMapper;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.MediaType;
@@ -25,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,6 +42,7 @@ public class HandlerV1 {
     public static final String SORT_BY_QUERY_PARAM = "sortBy";
     public static final String SORT_DIRECTION_QUERY_PARAM = "sortDirection";
     private final LoanApplicationUseCase loanApplicationUseCase;
+    private final UpdateLoanApplicationStatusUseCase loanApplicationStatusUseCase;
     private final Validator validator;
 
     public Mono<ServerResponse> listLoanRequests(ServerRequest serverRequest) {
@@ -241,5 +246,43 @@ public class HandlerV1 {
         }
         
         return sortDirection;
+    }
+    
+    public Mono<ServerResponse> updateLoanRequest(ServerRequest serverRequest) {
+        String id = serverRequest.pathVariable("id");
+        
+        return serverRequest.bodyToMono(UpdateLoanRequestDto.class)
+                .flatMap(this::validateRequest)
+                .map(r -> LoanRequestMapper.INSTANCE.toCommand(id, r))
+                .flatMap(this::validateId)
+                .flatMap(loanApplicationStatusUseCase::updateLoanApplicationStatus)
+                .map(LoanRequestMapper.INSTANCE::toResponseDto)
+                .flatMap(responseDto -> {
+                    SuccessResponse<Object> successResponse = SuccessResponse.builder()
+                            .timestamp(LocalDateTime.now())
+                            .path(serverRequest.path())
+                            .data(responseDto)
+                            .message("Loan request updated successfully")
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(successResponse);
+                });
+    }
+    
+    private Mono<UpdateLoanApplicationCommand> validateId(UpdateLoanApplicationCommand request) {
+        return Mono.fromCallable(() -> {
+            if (request.id() == null || request.id().isBlank()) {
+                throw new IllegalArgumentException("Id cannot be empty or null");
+            }
+            
+            try {
+                UUID.fromString(request.id());
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Id is invalid");
+            }
+            
+            return request;
+        });
     }
 }

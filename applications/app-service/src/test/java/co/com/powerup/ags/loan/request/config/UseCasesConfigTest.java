@@ -3,7 +3,9 @@ package co.com.powerup.ags.loan.request.config;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
 import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
+import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +55,11 @@ public class UseCasesConfigTest {
         @Bean
         public UserGateway userGateway() {
             return mock(UserGateway.class);
+        }
+        
+        @Bean
+        public NotificationGateway notificationGateway() {
+            return mock(NotificationGateway.class);
         }
 
         @Bean

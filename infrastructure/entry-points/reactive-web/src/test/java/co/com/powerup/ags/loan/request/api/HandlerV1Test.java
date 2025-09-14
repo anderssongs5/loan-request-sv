@@ -1,6 +1,7 @@
 package co.com.powerup.ags.loan.request.api;
 
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
+import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
@@ -10,8 +11,13 @@ import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UpdateLoanApplicationException;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,6 +75,9 @@ class HandlerV1Test {
     @Mock
     private LoanApplicationUseCase loanApplicationUseCase;
 
+    @Mock
+    private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
+
     private HandlerV1 handlerV1;
     
     private LoanApplication sampleLoanApplication;
@@ -79,7 +88,7 @@ class HandlerV1Test {
     void setUp() {
         LocalValidatorFactoryBean validatorFactory = new LocalValidatorFactoryBean();
         validatorFactory.afterPropertiesSet();
-        handlerV1 = new HandlerV1(loanApplicationUseCase, validatorFactory);
+        handlerV1 = new HandlerV1(loanApplicationUseCase, updateLoanApplicationStatusUseCase, validatorFactory);
 
         pendingStatus = LoanApplicationStatus.builder()
                 .id(1)
@@ -885,5 +894,303 @@ class HandlerV1Test {
                 .build();
         
         return new LoanRequestRequiringReview(loanApplication, user);
+    }
+
+    // Update Loan Request Tests
+
+    @Test
+    void shouldUpdateLoanRequestStatusSuccessfully() {
+        String loanId = UUID.randomUUID().toString();
+        Integer newStatus = 3; // APPROVED
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(newStatus)
+                .build();
+
+        LoanApplicationStatus approvedStatus = LoanApplicationStatus.builder()
+                .id(newStatus)
+                .name("APPROVED")
+                .description("Approved")
+                .build();
+
+        LoanApplication updatedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(any(UpdateLoanApplicationCommand.class)))
+                .thenReturn(Mono.just(updatedLoanApplication));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenStatusIsNull() {
+        String loanId = UUID.randomUUID().toString();
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(null)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenStatusIsZero() {
+        String loanId = UUID.randomUUID().toString();
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(0)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleLoanApplicationNotFoundException() {
+        String loanId = UUID.randomUUID().toString();
+        Integer newStatus = 3;
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(newStatus)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(any(UpdateLoanApplicationCommand.class)))
+                .thenReturn(Mono.error(new LoanApplicationNotFoundException("Loan application not found")));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(LoanApplicationNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleLoanApplicationStatusNotFoundException() {
+        String loanId = UUID.randomUUID().toString();
+        Integer invalidStatusId = 999;
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(invalidStatusId)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(any(UpdateLoanApplicationCommand.class)))
+                .thenReturn(Mono.error(new LoanApplicationStatusNotFoundException("Loan application status with id " + invalidStatusId + " was not found")));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(LoanApplicationStatusNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleUpdateLoanApplicationException() {
+        String loanId = UUID.randomUUID().toString();
+        Integer sameStatus = 1; // Same as current status
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(sameStatus)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(any(UpdateLoanApplicationCommand.class)))
+                .thenReturn(Mono.error(new UpdateLoanApplicationException("The new status is the same as the current status of the loan request.")));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(UpdateLoanApplicationException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleUnexpectedExceptionInUpdateLoanRequest() {
+        String loanId = UUID.randomUUID().toString();
+        Integer newStatus = 3;
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(newStatus)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(any(UpdateLoanApplicationCommand.class)))
+                .thenReturn(Mono.error(new RuntimeException("Unexpected error")));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldPassCorrectParametersToUpdateUseCase() {
+        String loanId = "29a4639d-b328-453a-a408-d2eff0bcae84";
+        Integer newStatus = 4; // REJECTED
+        
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(newStatus)
+                .build();
+
+        LoanApplicationStatus rejectedStatus = LoanApplicationStatus.builder()
+                .id(newStatus)
+                .name("REJECTED")
+                .description("Rejected")
+                .build();
+
+        LoanApplication updatedLoanApplication = sampleLoanApplication.toBuilder()
+                .id(loanId)
+                .status(rejectedStatus)
+                .build();
+
+        when(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(argThat(command -> 
+                command.id().equals(loanId) && command.status().equals(newStatus))))
+                .thenReturn(Mono.just(updatedLoanApplication));
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/" + loanId))
+                .pathVariable("id", loanId)
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectNextMatches(serverResponse -> {
+                    assertEquals(200, serverResponse.statusCode().value());
+                    return true;
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenRequestIdIsBlank() {
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(3)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/"))
+                .pathVariable("id", "")
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenRequestIdIsNotValidUuid() {
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(3)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/invalid-uuid"))
+                .pathVariable("id", "invalid-uuid")
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenRequestIdIsNumeric() {
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(3)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/12345"))
+                .pathVariable("id", "12345")
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenRequestIdHasInvalidFormat() {
+        UpdateLoanRequestDto requestDto = UpdateLoanRequestDto.builder()
+                .status(3)
+                .build();
+
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(API_PATH + "/not-a-uuid-format"))
+                .pathVariable("id", "not-a-uuid-format")
+                .header(CONTENT_TYPE_HEADER, APPLICATION_JSON_VALUE)
+                .body(Mono.just(requestDto));
+
+        Mono<ServerResponse> response = handlerV1.updateLoanRequest(request);
+
+        StepVerifier.create(response)
+                .expectError(IllegalArgumentException.class)
+                .verify();
     }
 }

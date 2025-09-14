@@ -4,6 +4,7 @@ import co.com.powerup.ags.loan.request.api.HandlerV1;
 import co.com.powerup.ags.loan.request.api.RouterRest;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -32,6 +33,9 @@ class ConfigTest {
     
     @MockitoBean
     private LoanApplicationUseCase loanApplicationUseCase;
+    
+    @MockitoBean
+    private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
 
     @Test
     void corsConfigurationShouldAllowOrigins() {

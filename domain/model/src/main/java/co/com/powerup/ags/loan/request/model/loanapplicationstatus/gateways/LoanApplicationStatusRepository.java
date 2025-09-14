@@ -4,6 +4,8 @@ import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicati
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Set;
+
 public interface LoanApplicationStatusRepository {
     
     Mono<LoanApplicationStatus> getById(Integer id);
@@ -11,4 +13,6 @@ public interface LoanApplicationStatusRepository {
     Mono<LoanApplicationStatus> getByName(String name);
     
     Flux<LoanApplicationStatus> getAll();
+    
+    Flux<LoanApplicationStatus> getByNames(Set<String> names);
 }

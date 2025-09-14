@@ -13,6 +13,7 @@ import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
@@ -77,6 +78,9 @@ class RouterRestTest {
 
     @MockitoBean
     private LoanApplicationUseCase loanApplicationUseCase;
+
+    @MockitoBean
+    private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
 
     private LoanApplication sampleLoanApplication;
     private LoanApplicationStatus pendingStatus;

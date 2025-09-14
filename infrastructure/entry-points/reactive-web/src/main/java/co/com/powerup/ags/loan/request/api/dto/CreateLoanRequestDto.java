@@ -51,7 +51,7 @@ public class CreateLoanRequestDto {
     private BigDecimal amount;
     
     @Schema(
-        description = "Loan repayment term in months. Must be a positive integer of at least 1 month.",
+        description = "Loan payment term in months. Must be a positive integer of at least 1 month.",
         example = "24",
         requiredMode = Schema.RequiredMode.REQUIRED,
         minimum = "1"

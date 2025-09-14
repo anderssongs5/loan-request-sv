@@ -3,9 +3,11 @@ package co.com.powerup.ags.loan.request.api.mapper;
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.LoanRequestResponseDto;
+import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -27,4 +29,8 @@ public interface LoanRequestMapper {
     @Mapping(target = "requestStatus", source = "status")
     @Mapping(target = "loanType", source = "loanType")
     LoanApplicationSummaryResponse toSummaryResponse(LoanRequestRequiringReview loanRequestRequiringReview);
+    
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "status", source = "dto.status")
+    UpdateLoanApplicationCommand toCommand(String id, UpdateLoanRequestDto dto);
 }

@@ -59,3 +59,9 @@ adapters:
     url: "http://localhost:8080"
 security:
   introspectionBaseUrl: "http://localhost:8080"
+adapter:
+  sqs:
+    notification:
+      region: "us-east-1"
+      queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-notifications"
+      endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-notifications"

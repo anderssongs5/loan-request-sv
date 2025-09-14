@@ -227,7 +227,7 @@ public class LoanApplicationUseCase {
                         .build();
                 })
             )
-            .flatMap(loanApplicationRepository::createLoanRequest);
+            .flatMap(loanApplicationRepository::saveLoanApplication);
     }
     
     private Mono<LoanType> validateLoanType(Integer loanTypeId) {

@@ -163,4 +163,182 @@ class LoanRequestStatusReactiveRepositoryAdapterTest {
                 .expectError(RuntimeException.class)
                 .verify();
     }
+
+    // Additional tests for getByNames method used in PUT flow
+
+    @Test
+    void shouldGetStatusesByNamesSuccessfully() {
+        java.util.Set<String> statusNames = java.util.Set.of("APPROVED", "REJECTED");
+        
+        LoanRequestStatusEntity approvedEntity = LoanRequestStatusEntity.builder()
+                .id(3)
+                .name("APPROVED")
+                .description("Approved")
+                .build();
+                
+        LoanRequestStatusEntity rejectedEntity = LoanRequestStatusEntity.builder()
+                .id(4)
+                .name("REJECTED")
+                .description("Rejected")
+                .build();
+
+        when(repository.findByNameIn(statusNames))
+                .thenReturn(Flux.just(approvedEntity, rejectedEntity));
+
+        Flux<LoanApplicationStatus> result = adapter.getByNames(statusNames);
+
+        StepVerifier.create(result)
+                .expectNextMatches(status -> 
+                    status.getId().equals(3) &&
+                    status.getName().equals("APPROVED")
+                )
+                .expectNextMatches(status -> 
+                    status.getId().equals(4) &&
+                    status.getName().equals("REJECTED")
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnEmptyFluxWhenStatusesNotFoundByNames() {
+        java.util.Set<String> nonExistentNames = java.util.Set.of("INVALID_STATUS_1", "INVALID_STATUS_2");
+
+        when(repository.findByNameIn(nonExistentNames))
+                .thenReturn(Flux.empty());
+
+        Flux<LoanApplicationStatus> result = adapter.getByNames(nonExistentNames);
+
+        StepVerifier.create(result)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleErrorWhenGettingStatusesByNames() {
+        java.util.Set<String> statusNames = java.util.Set.of("APPROVED", "REJECTED");
+        RuntimeException error = new RuntimeException("Database query error");
+
+        when(repository.findByNameIn(statusNames))
+                .thenReturn(Flux.error(error));
+
+        Flux<LoanApplicationStatus> result = adapter.getByNames(statusNames);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldGetStatusesByEmptyNamesSet() {
+        java.util.Set<String> emptyNames = java.util.Set.of();
+
+        when(repository.findByNameIn(emptyNames))
+                .thenReturn(Flux.empty());
+
+        Flux<LoanApplicationStatus> result = adapter.getByNames(emptyNames);
+
+        StepVerifier.create(result)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldGetStatusesByNamesForNotificationScenario() {
+        // Specific test for the PUT update flow notification scenario
+        java.util.Set<String> notificationStatuses = java.util.Set.of("APPROVED", "REJECTED");
+        
+        LoanRequestStatusEntity approvedEntity = LoanRequestStatusEntity.builder()
+                .id(3)
+                .name("APPROVED")
+                .description("Loan application approved")
+                .build();
+                
+        LoanRequestStatusEntity rejectedEntity = LoanRequestStatusEntity.builder()
+                .id(4)
+                .name("REJECTED")  
+                .description("Loan application rejected")
+                .build();
+
+        when(repository.findByNameIn(notificationStatuses))
+                .thenReturn(Flux.just(approvedEntity, rejectedEntity));
+
+        Flux<LoanApplicationStatus> result = adapter.getByNames(notificationStatuses);
+
+        StepVerifier.create(result)
+                .expectNextMatches(status -> {
+                    return status.getId().equals(3) &&
+                           status.getName().equals("APPROVED") &&
+                           status.getDescription().equals("Loan application approved");
+                })
+                .expectNextMatches(status -> {
+                    return status.getId().equals(4) &&
+                           status.getName().equals("REJECTED") &&
+                           status.getDescription().equals("Loan application rejected");
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldGetAllStatusesSuccessfully() {
+        LoanRequestStatusEntity pendingEntity = LoanRequestStatusEntity.builder()
+                .id(1)
+                .name("PENDING")
+                .description("Pending review")
+                .build();
+                
+        LoanRequestStatusEntity approvedEntity = LoanRequestStatusEntity.builder()
+                .id(3)
+                .name("APPROVED")
+                .description("Approved")
+                .build();
+
+        LoanApplicationStatus pendingStatus = LoanApplicationStatus.builder()
+                .id(1)
+                .name("PENDING")
+                .description("Pending review")
+                .build();
+                
+        LoanApplicationStatus approvedStatus = LoanApplicationStatus.builder()
+                .id(3)
+                .name("APPROVED")
+                .description("Approved")
+                .build();
+
+        when(repository.findAll())
+                .thenReturn(Flux.just(pendingEntity, approvedEntity));
+        when(objectMapper.map(pendingEntity, LoanApplicationStatus.class))
+                .thenReturn(pendingStatus);
+        when(objectMapper.map(approvedEntity, LoanApplicationStatus.class))
+                .thenReturn(approvedStatus);
+
+        Flux<LoanApplicationStatus> result = adapter.getAll();
+
+        StepVerifier.create(result)
+                .expectNext(pendingStatus)
+                .expectNext(approvedStatus)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnEmptyFluxWhenNoStatusesExistForGetAll() {
+        when(repository.findAll())
+                .thenReturn(Flux.empty());
+
+        Flux<LoanApplicationStatus> result = adapter.getAll();
+
+        StepVerifier.create(result)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleErrorWhenGettingAllStatuses() {
+        RuntimeException error = new RuntimeException("Database connection lost");
+
+        when(repository.findAll())
+                .thenReturn(Flux.error(error));
+
+        Flux<LoanApplicationStatus> result = adapter.getAll();
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
 }

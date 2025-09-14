@@ -3,6 +3,7 @@ package co.com.powerup.ags.loan.request.api;
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.ErrorResponse;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
+import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -17,11 +18,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-
-import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
-import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
-import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 @Configuration
 public class RouterRest {
@@ -258,11 +256,133 @@ public class RouterRest {
                     )
                 }
             )
+        ),
+        @RouterOperation(
+            path = "/api/v1/loan-requests/{id}",
+            method = RequestMethod.PUT,
+            operation = @Operation(
+                tags = {"Loan Request"},
+                summary = "Update loan application status",
+                description = """
+                    Update the status of an existing loan application.
+                    
+                    This endpoint allows advisors to change the status of a loan application (e.g., approve, reject).
+                    When the status is updated to APPROVED or REJECTED, the system will automatically:
+                    - Send a notification to the user via SQS
+                    - Include complete loan application details and user information in the notification
+                    
+                    Status validation:
+                    - The new status must be different from the current status
+                    - Only valid status IDs are accepted (must exist in the system)
+                    
+                    Access Control:
+                    - Only users with ADVISOR role can update loan application statuses
+                    - Authentication token must be provided in the Authorization header
+                    """,
+                operationId = "updateLoanApplicationStatus",
+                parameters = {
+                    @Parameter(
+                        name = "id",
+                        description = "Unique identifier of the loan application (UUID format)",
+                        example = "29a4639d-b328-453a-a408-d2eff0bcae84",
+                        in = ParameterIn.PATH,
+                        required = true,
+                        schema = @Schema(type = "string", format = "uuid")
+                    )
+                },
+                requestBody = @RequestBody(
+                    description = "Status update data",
+                    required = true,
+                    content = @Content(
+                        mediaType = MediaType.APPLICATION_JSON_VALUE,
+                        schema = @Schema(implementation = UpdateLoanRequestDto.class)
+                    )
+                ),
+                responses = {
+                    @ApiResponse(
+                        responseCode = "200",
+                        description = "Loan application status updated successfully",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Success Response",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-14T14:30:00.123456",
+                                  "path": "/api/v1/loan-requests/29a4639d-b328-453a-a408-d2eff0bcae84",
+                                  "data": {
+                                    "id": "29a4639d-b328-453a-a408-d2eff0bcae84",
+                                    "email": "user@example.com",
+                                    "term": 24,
+                                    "amount": 50000.00,
+                                    "loanStatusId": 3,
+                                    "loanTypeId": 1
+                                  },
+                                  "message": "Loan application status updated successfully"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "400",
+                        description = "Bad Request - Invalid status ID or same status",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Same Status Error",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-14T14:30:00.123456",
+                                  "path": "/api/v1/loan-requests/29a4639d-b328-453a-a408-d2eff0bcae84",
+                                  "data": null,
+                                  "message": "The new status is the same as the current status of the loan request."
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "404",
+                        description = "Loan application not found or invalid status ID",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Not Found Error",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-14T14:30:00.123456",
+                                  "path": "/api/v1/loan-requests/29a4639d-b328-453a-a408-d2eff0bcae84",
+                                  "data": null,
+                                  "message": "Loan application not found"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "403",
+                        description = "Access denied - ADVISOR role required",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                        )
+                    )
+                }
+            )
         )
     })
     public RouterFunction<ServerResponse> routerFunction(HandlerV1 handlerV1) {
-        return route(GET("/api/v1/loan-requests"), handlerV1::getLoanRequestsByStatuses)
-                .andRoute(GET("/api/v1/loan-requests-2"), handlerV1::getLoanRequestsByStatuses2)
-                .andRoute(POST("/api/v1/loan-requests"), handlerV1::createLoanRequest);
+        return RouterFunctions.route()
+                .path("/api/v1/loan-requests", builder -> builder
+                        .GET("", handlerV1::getLoanRequestsByStatuses)
+                        .POST("", handlerV1::createLoanRequest)
+                        .PUT("/{id}", handlerV1::updateLoanRequest))
+                .path("/api/v1/loan-requests-2", builder -> builder
+                        .GET("", handlerV1::getLoanRequestsByStatuses2))
+                .build();
     }
 }

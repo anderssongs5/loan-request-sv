@@ -8,6 +8,7 @@ import co.com.powerup.ags.loan.request.r2dbc.mapper.LoanApplicationMapper;
 import org.reactivecommons.utils.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -37,15 +38,15 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
     }
     
     @Override
-    public Mono<LoanApplication> createLoanRequest(LoanApplication loanApplication) {
-        log.info("Creating loan request for email: {}, amount: {}, term: {}", 
+    public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
+        log.info("Saving loan request for email: {}, amount: {}, term: {}",
                 loanApplication.getEmail(), loanApplication.getAmount(), loanApplication.getTerm());
         
         LoanRequestEntity entity = LoanApplicationMapper.INSTANCE.toEntity(loanApplication);
         
         return repository.save(entity)
-                .doOnSuccess(savedEntity -> log.info("Loan request created successfully with ID: {}", savedEntity.getRequestId()))
-                .doOnError(error -> log.error("Error creating loan request for email: {}", loanApplication.getEmail(), error))
+                .doOnSuccess(savedEntity -> log.info("Loan request saved successfully with ID: {}", savedEntity.getRequestId()))
+                .doOnError(error -> log.error("Error saving loan request for email: {}", loanApplication.getEmail(), error))
                 .map(savedEntity -> {
                     LoanApplication mapped = LoanApplicationMapper.INSTANCE.toDomain(savedEntity);
                     return mapped.toBuilder()
@@ -156,5 +157,19 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
                 .doOnSubscribe(subscription -> log.debug("Starting to count loan requests by statuses"))
                 .doOnNext(count -> log.info("Found {} loan applications matching statuses: {}", count, statuses))
                 .doOnError(error -> log.error("Error counting loan applications by statuses", error));
+    }
+    
+    @Override
+    public Mono<LoanApplication> getById(String id) {
+        log.info("Getting loan request by id {}", id);
+        
+        return Mono.justOrEmpty(id)
+                .filter(requestId -> !requestId.trim().isEmpty())
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Loan Request ID cannot be null or empty")))
+                .flatMap(repository::findById)
+                .map(LoanApplicationMapper.INSTANCE::toDomain)
+                .doOnNext(loanApplication -> log.info("Found loan request: {}", loanApplication.getId()))
+                .onErrorMap(DataAccessException.class,
+                        ex -> new RuntimeException("Failed to find loan request by ID: " + ex.getMessage(), ex));
     }
 }

@@ -96,8 +96,8 @@ class LoanRequestReactiveRepositoryAdapterTest {
     }
 
     @Test
-    void shouldCreateLoanRequestSuccessfully() {
-        String loanId = UUID.randomUUID().toString();
+    void shouldSaveLoanApplicationSuccessfully() {
+        UUID loanId = UUID.randomUUID();
         LoanRequestEntity savedEntity = LoanRequestEntity.builder()
                 .requestId(loanId)
                 .email(JOSE_EMAIL)
@@ -112,11 +112,11 @@ class LoanRequestReactiveRepositoryAdapterTest {
         when(transactionalOperator.transactional(any(Mono.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Mono<LoanApplication> result = adapter.createLoanRequest(sampleLoanApplication);
+        Mono<LoanApplication> result = adapter.saveLoanApplication(sampleLoanApplication);
 
         StepVerifier.create(result)
                 .expectNextMatches(loanApplication -> {
-                    return loanApplication.getId().equals(loanId) &&
+                    return loanApplication.getId().equals(loanId.toString()) &&
                            loanApplication.getEmail().equals(JOSE_EMAIL) &&
                            loanApplication.getAmount().equals(AMOUNT_50000) &&
                            loanApplication.getTerm().equals(TERM_24) &&
@@ -127,7 +127,7 @@ class LoanRequestReactiveRepositoryAdapterTest {
     }
 
     @Test
-    void shouldHandleCreateLoanRequestError() {
+    void shouldHandleSaveLoanApplicationError() {
         RuntimeException error = new RuntimeException("Database error");
 
         when(repository.save(any(LoanRequestEntity.class)))
@@ -135,7 +135,7 @@ class LoanRequestReactiveRepositoryAdapterTest {
         when(transactionalOperator.transactional(any(Mono.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Mono<LoanApplication> result = adapter.createLoanRequest(sampleLoanApplication);
+        Mono<LoanApplication> result = adapter.saveLoanApplication(sampleLoanApplication);
 
         StepVerifier.create(result)
                 .expectError(RuntimeException.class)
@@ -341,8 +341,6 @@ class LoanRequestReactiveRepositoryAdapterTest {
     @Test
     void shouldGetLoanApplicationsPageableByStatusesWithNullParameters() {
         Set<String> statuses = Set.of(PENDING_STATUS);
-        int page = 1;
-        int size = 5;
         
         String loanId = UUID.randomUUID().toString();
         
@@ -419,11 +417,9 @@ class LoanRequestReactiveRepositoryAdapterTest {
         Set<Integer> statuses = Set.of(STATUS_ID_1, 2);
         int page = 0;
         int size = 10;
-        String sortBy = AMOUNT;
-        String sortDirection = DESC;
         
-        String firstLoanId = UUID.randomUUID().toString();
-        String secondLoanId = UUID.randomUUID().toString();
+        UUID firstLoanId = UUID.randomUUID();
+        UUID secondLoanId = UUID.randomUUID();
         
         LoanRequestEntity firstEntity = LoanRequestEntity.builder()
                 .requestId(firstLoanId)
@@ -446,18 +442,18 @@ class LoanRequestReactiveRepositoryAdapterTest {
         when(repository.getAllByStatusIdIn(any(), any()))
                 .thenReturn(Flux.just(firstEntity, secondEntity));
         
-        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, AMOUNT, DESC);
         
         StepVerifier.create(result)
                 .expectNextMatches(loanApp -> 
-                    loanApp.getId().equals(firstLoanId) &&
+                    loanApp.getId().equals(firstLoanId.toString()) &&
                     loanApp.getEmail().equals(JOSE_EMAIL) &&
                     loanApp.getAmount().equals(AMOUNT_75000) &&
                     loanApp.getStatus() != null &&
                     loanApp.getLoanType() != null
                 )
                 .expectNextMatches(loanApp -> 
-                    loanApp.getId().equals(secondLoanId) &&
+                    loanApp.getId().equals(secondLoanId.toString()) &&
                     loanApp.getEmail().equals(MARIA_EMAIL) &&
                     loanApp.getAmount().equals(AMOUNT_50000) &&
                     loanApp.getStatus() != null &&
@@ -470,7 +466,7 @@ class LoanRequestReactiveRepositoryAdapterTest {
     void shouldGetLoanApplicationsPageableByStatuses2WithNullParameters() {
         Set<Integer> statuses = Set.of(STATUS_ID_1);
         
-        String loanId = UUID.randomUUID().toString();
+        UUID loanId = UUID.randomUUID();
         
         LoanRequestEntity entity = LoanRequestEntity.builder()
                 .requestId(loanId)
@@ -488,7 +484,7 @@ class LoanRequestReactiveRepositoryAdapterTest {
         
         StepVerifier.create(result)
                 .expectNextMatches(loanApp -> 
-                    loanApp.getId().equals(loanId) &&
+                    loanApp.getId().equals(loanId.toString()) &&
                     loanApp.getEmail().equals(CARLOS_EMAIL) &&
                     loanApp.getAmount().equals(new BigDecimal("100000.00")) &&
                     loanApp.getStatus() != null &&
@@ -502,13 +498,11 @@ class LoanRequestReactiveRepositoryAdapterTest {
         Set<Integer> statuses = Set.of(99); // Non-existing status
         int page = 0;
         int size = 10;
-        String sortBy = EMAIL;
-        String sortDirection = ASC;
         
         when(repository.getAllByStatusIdIn(any(), any()))
                 .thenReturn(Flux.empty());
         
-        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, EMAIL, ASC);
         
         StepVerifier.create(result)
                 .verifyComplete();
@@ -519,14 +513,12 @@ class LoanRequestReactiveRepositoryAdapterTest {
         Set<Integer> statuses = Set.of(STATUS_ID_1);
         int page = 0;
         int size = 10;
-        String sortBy = AMOUNT;
-        String sortDirection = DESC;
         RuntimeException error = new RuntimeException("Database query error");
         
         when(repository.getAllByStatusIdIn(any(), any()))
                 .thenReturn(Flux.error(error));
         
-        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, sortBy, sortDirection);
+        Flux<LoanApplication> result = adapter.getLoanApplicationsPageableByStatuses2(statuses, page, size, AMOUNT, DESC);
         
         StepVerifier.create(result)
                 .expectError(RuntimeException.class)
@@ -619,5 +611,140 @@ class LoanRequestReactiveRepositoryAdapterTest {
         
         Flux<LoanApplication> result6 = adapter.getLoanApplicationsPageableByStatuses(statuses, 0, 10, "invalid_field", "asc");
         StepVerifier.create(result6).verifyComplete();
+    }
+
+    // Tests for getById method used in PUT flow
+
+    @Test
+    void shouldGetLoanApplicationByIdSuccessfully() {
+        String loanId = "29a4639d-b328-453a-a408-d2eff0bcae84";
+        
+        LoanRequestEntity entity = LoanRequestEntity.builder()
+                .requestId(UUID.fromString(loanId))
+                .email(JOSE_EMAIL)
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .statusId(STATUS_ID_1)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .build();
+
+        when(repository.findById(loanId))
+                .thenReturn(Mono.just(entity));
+
+        Mono<LoanApplication> result = adapter.getById(loanId);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getId().equals(loanId) &&
+                    loanApp.getEmail().equals(JOSE_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24) &&
+                    loanApp.getStatus() != null &&
+                    loanApp.getLoanType() != null
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnEmptyMonoWhenLoanApplicationNotFoundById() {
+        String loanId = "550e8400-e29b-41d4-a716-446655440000";
+
+        when(repository.findById(loanId))
+                .thenReturn(Mono.empty());
+
+        Mono<LoanApplication> result = adapter.getById(loanId);
+
+        StepVerifier.create(result)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleGetByIdError() {
+        String loanId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+        RuntimeException error = new RuntimeException("Database connection error");
+
+        when(repository.findById(loanId))
+                .thenReturn(Mono.error(error));
+
+        Mono<LoanApplication> result = adapter.getById(loanId);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldThrowIllegalArgumentExceptionForNullId() {
+        Mono<LoanApplication> result = adapter.getById(null);
+
+        StepVerifier.create(result)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldThrowIllegalArgumentExceptionForEmptyId() {
+        String emptyId = "";
+
+        Mono<LoanApplication> result = adapter.getById(emptyId);
+
+        StepVerifier.create(result)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldThrowIllegalArgumentExceptionForBlankId() {
+        String blankId = "   ";
+
+        Mono<LoanApplication> result = adapter.getById(blankId);
+
+        StepVerifier.create(result)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldGetLoanApplicationByIdWithUUIDFormat() {
+        UUID validUUID = UUID.randomUUID();
+        
+        LoanRequestEntity entity = LoanRequestEntity.builder()
+                .requestId(validUUID)
+                .email(MARIA_EMAIL)
+                .amount(AMOUNT_75000)
+                .term(TERM_36)
+                .statusId(STATUS_ID_1)
+                .loanTypeId(LOAN_TYPE_ID_1)
+                .build();
+
+        when(repository.findById(validUUID.toString()))
+                .thenReturn(Mono.just(entity));
+
+        Mono<LoanApplication> result = adapter.getById(validUUID.toString());
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getId().equals(validUUID.toString()) &&
+                    loanApp.getEmail().equals(MARIA_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_75000) &&
+                    loanApp.getTerm().equals(TERM_36)
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleDataAccessExceptionInGetById() {
+        String loanId = "123e4567-e89b-12d3-a456-426614174000";
+        org.springframework.dao.DataAccessException dataAccessException = 
+            new org.springframework.dao.DataAccessResourceFailureException("Database query failed");
+
+        when(repository.findById(loanId))
+                .thenReturn(Mono.error(dataAccessException));
+
+        Mono<LoanApplication> result = adapter.getById(loanId);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
     }
 }

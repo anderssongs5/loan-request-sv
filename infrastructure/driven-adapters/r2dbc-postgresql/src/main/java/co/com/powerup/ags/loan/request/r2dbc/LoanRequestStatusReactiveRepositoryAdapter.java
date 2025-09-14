@@ -4,10 +4,13 @@ import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicati
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestStatusEntity;
 import co.com.powerup.ags.loan.request.r2dbc.helper.ReactiveAdapterOperations;
+import co.com.powerup.ags.loan.request.r2dbc.mapper.LoanApplicationStatusMapper;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Set;
 
 @Repository
 public class LoanRequestStatusReactiveRepositoryAdapter extends ReactiveAdapterOperations<
@@ -35,5 +38,11 @@ public class LoanRequestStatusReactiveRepositoryAdapter extends ReactiveAdapterO
     @Override
     public Flux<LoanApplicationStatus> getAll() {
         return super.findAll();
+    }
+    
+    @Override
+    public Flux<LoanApplicationStatus> getByNames(Set<String> names) {
+        return this.repository.findByNameIn(names)
+                .map(LoanApplicationStatusMapper.INSTANCE::toDomain);
     }
 }

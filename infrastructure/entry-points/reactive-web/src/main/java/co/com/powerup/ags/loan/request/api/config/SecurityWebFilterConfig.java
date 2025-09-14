@@ -22,6 +22,8 @@ import reactor.core.publisher.Mono;
 public class SecurityWebFilterConfig {
     
     public static final String API_V1_LOAN_REQUESTS_PATH = "/api/v1/loan-requests";
+    public static final String CLIENT_ROLE = "CLIENT";
+    public static final String ADVISOR_ROLE = "ADVISOR";
     
     @Bean
     public ServerAccessDeniedHandler accessDeniedHandler() {
@@ -48,8 +50,9 @@ public class SecurityWebFilterConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(SecurityConstants.EXCLUDED_PATTERNS.toArray(new String[0]))
                         .permitAll()
-                        .pathMatchers(HttpMethod.GET, API_V1_LOAN_REQUESTS_PATH).hasRole("ADVISOR")
-                        .pathMatchers(HttpMethod.POST, API_V1_LOAN_REQUESTS_PATH).hasRole("CLIENT")
+                        .pathMatchers(HttpMethod.GET, API_V1_LOAN_REQUESTS_PATH).hasRole(ADVISOR_ROLE)
+                        .pathMatchers(HttpMethod.POST, API_V1_LOAN_REQUESTS_PATH).hasRole(CLIENT_ROLE)
+                        .pathMatchers(HttpMethod.PUT, API_V1_LOAN_REQUESTS_PATH + "/**").hasRole(ADVISOR_ROLE)
                         .anyExchange()
                         .authenticated()
                 );

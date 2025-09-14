@@ -8,7 +8,7 @@ import java.util.Set;
 
 public interface LoanApplicationRepository {
     
-    Mono<LoanApplication> createLoanRequest(LoanApplication loanApplication);
+    Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication);
     
     Flux<LoanApplication> getAllLoanRequests();
     
@@ -21,4 +21,6 @@ public interface LoanApplicationRepository {
     Mono<Long> countLoanApplicationsByStatuses(Set<String> statuses);
     
     Mono<Long> countLoanApplicationsByStatuses2(Set<Integer> statuses);
+    
+    Mono<LoanApplication> getById(String id);
 }

@@ -3,12 +3,14 @@ package co.com.powerup.ags.loan.request.api.mapper;
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
 import co.com.powerup.ags.loan.request.api.dto.LoanRequestResponseDto;
+import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -187,13 +189,6 @@ class LoanRequestMapperTest {
         LoanRequestResponseDto responseDto = LoanRequestMapper.INSTANCE.toResponseDto(null);
 
         assertNull(responseDto);
-    }
-
-    @Test
-    void shouldHandleNullCreateLoanRequestDtoGracefully() {
-        CreateLoanRequestCommand command = LoanRequestMapper.INSTANCE.toCommand(null, null);
-
-        assertNull(command);
     }
     
     @Test
@@ -380,5 +375,114 @@ class LoanRequestMapperTest {
         LoanApplicationSummaryResponse summaryResponse = LoanRequestMapper.INSTANCE.toSummaryResponse(null);
 
         assertNull(summaryResponse);
+    }
+
+    // Update Loan Request Mapping Tests
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommand() {
+        String loanId = "29a4639d-b328-453a-a408-d2eff0bcae84";
+        Integer statusId = 3; // APPROVED
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(statusId)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(loanId, dto);
+
+        assertNotNull(command);
+        assertEquals(loanId, command.id());
+        assertEquals(statusId, command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithRejectedStatus() {
+        String loanId = "550e8400-e29b-41d4-a716-446655440000";
+        Integer rejectedStatusId = 4; // REJECTED
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(rejectedStatusId)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(loanId, dto);
+
+        assertNotNull(command);
+        assertEquals(loanId, command.id());
+        assertEquals(rejectedStatusId, command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithNullStatus() {
+        String loanId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(null)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(loanId, dto);
+
+        assertNotNull(command);
+        assertEquals(loanId, command.id());
+        assertNull(command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithEmptyId() {
+        String emptyId = "";
+        Integer statusId = 2; // UNDER_REVIEW
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(statusId)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(emptyId, dto);
+
+        assertNotNull(command);
+        assertEquals(emptyId, command.id());
+        assertEquals(statusId, command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithNullId() {
+        String nullId = null;
+        Integer statusId = 5; // CANCELLED
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(statusId)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(nullId, dto);
+
+        assertNotNull(command);
+        assertNull(command.id());
+        assertEquals(statusId, command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithMinimumStatusValue() {
+        String loanId = "123e4567-e89b-12d3-a456-426614174000";
+        Integer minStatus = 1; // PENDING
+        
+        UpdateLoanRequestDto dto = UpdateLoanRequestDto.builder()
+                .status(minStatus)
+                .build();
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(loanId, dto);
+
+        assertNotNull(command);
+        assertEquals(loanId, command.id());
+        assertEquals(minStatus, command.status());
+    }
+
+    @Test
+    void shouldMapUpdateLoanRequestDtoToCommandWithNullDto() {
+        String loanId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+        UpdateLoanRequestDto dto = null;
+
+        UpdateLoanApplicationCommand command = LoanRequestMapper.INSTANCE.toCommand(loanId, dto);
+
+        assertNotNull(command);
+        assertEquals(loanId, command.id());
+        assertNull(command.status());
     }
 }

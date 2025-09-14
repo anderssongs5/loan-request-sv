@@ -194,7 +194,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
@@ -398,7 +398,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.error(new RuntimeException("Database error")));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
@@ -445,7 +445,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(mariaUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(mariaLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(mariaCommand);
@@ -487,7 +487,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
@@ -513,7 +513,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
@@ -539,7 +539,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
@@ -565,7 +565,7 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(loanApplicationStatusRepository.getByName(PENDING))
                 .thenReturn(Mono.just(pendingStatus));
-        when(loanApplicationRepository.createLoanRequest(any(LoanApplication.class)))
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
