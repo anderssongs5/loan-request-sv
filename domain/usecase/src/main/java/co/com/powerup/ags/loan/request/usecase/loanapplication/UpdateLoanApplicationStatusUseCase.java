@@ -10,9 +10,9 @@ import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepositor
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UpdateLoanApplicationException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UpdateLoanApplicationException;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

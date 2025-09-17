@@ -12,9 +12,9 @@ import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGa
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UpdateLoanApplicationException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UpdateLoanApplicationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

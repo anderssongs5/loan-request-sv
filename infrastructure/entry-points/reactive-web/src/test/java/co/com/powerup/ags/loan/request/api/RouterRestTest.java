@@ -16,7 +16,7 @@ import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUs
 import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

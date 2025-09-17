@@ -15,10 +15,10 @@ import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplica
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UpdateLoanApplicationException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UpdateLoanApplicationException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
