@@ -65,3 +65,16 @@ adapter:
       region: "us-east-1"
       queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-notifications"
       endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-notifications"
+    automaticvalidation:
+      region: "us-east-1"
+      queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/automaticLoanValidation"
+      endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/automaticLoanValidation"
+entrypoint:
+  sqs:
+    region: "us-east-1"
+    endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-validationDecision"
+    queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-validationDecision"
+    waitTimeSeconds: 20
+    maxNumberOfMessages: 10
+    visibilityTimeoutSeconds: 10
+    numberOfThreads: 1

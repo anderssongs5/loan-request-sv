@@ -2,6 +2,7 @@ package co.com.powerup.ags.loan.request.r2dbc;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestEntity;
 import co.com.powerup.ags.loan.request.r2dbc.helper.ReactiveAdapterOperations;
 import co.com.powerup.ags.loan.request.r2dbc.mapper.LoanApplicationMapper;
@@ -171,5 +172,36 @@ public class LoanRequestReactiveRepositoryAdapter extends ReactiveAdapterOperati
                 .doOnNext(loanApplication -> log.info("Found loan request: {}", loanApplication.getId()))
                 .onErrorMap(DataAccessException.class,
                         ex -> new RuntimeException("Failed to find loan request by ID: " + ex.getMessage(), ex));
+    }
+    
+    @Override
+    public Mono<Long> countLoanApplicationsByStatusesAndEmail(Set<String> statuses, String email) {
+        log.info("Counting loan applications by statuses: {} and email: {}", statuses, email);
+        
+        return repository.countByStatusesAndEmail(statuses, email)
+                .doOnSubscribe(subscription -> log.debug("Starting to count loan requests by statuses and email"))
+                .doOnNext(count -> log.info("Found {} loan applications for email {} with statuses: {}", count, email, statuses))
+                .doOnError(error -> log.error("Error counting loan applications by statuses and email", error));
+    }
+    
+    @Override
+    public Flux<LoanApplication> getLoanApplicationsPageableByStatusesAndEmail(Set<String> statuses, String email, 
+                                                                              Integer page, Integer size, 
+                                                                              String sortBy, String sortDirection) {
+        log.info("Retrieving loan applications by statuses: {} and email: {}, page: {}, size: {}, sortBy: {}, sortDirection: {}", 
+                statuses, email, page, size, sortBy, sortDirection);
+        
+        page = Optional.ofNullable(page).orElse(0);
+        size = Optional.ofNullable(size).orElse(10);
+        sortDirection = Optional.ofNullable(sortDirection).orElse("asc").toUpperCase();
+        Integer offset = page * size;
+
+        sortBy = validateAndMapSortField(sortBy);
+        
+        return repository.findSummaryByStatusesAndEmailPageable(statuses, email, sortBy, sortDirection, size, offset)
+                .doOnSubscribe(subscription -> log.debug("Starting to fetch loan request summaries for email {} from database", email))
+                .doOnComplete(() -> log.info("Successfully retrieved paginated loan request summaries for email {}", email))
+                .doOnError(error -> log.error("Error retrieving paginated loan request summaries for email {}", email, error))
+                .map(LoanApplicationMapper.INSTANCE::toDomain);
     }
 }

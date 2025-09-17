@@ -2,10 +2,13 @@ package co.com.powerup.ags.loan.request.api;
 
 import co.com.powerup.ags.loan.request.api.dto.CreateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.dto.LoanApplicationSummaryResponse;
+import co.com.powerup.ags.loan.request.api.dto.LoanRequestResponseDto;
 import co.com.powerup.ags.loan.request.api.dto.SuccessResponse;
 import co.com.powerup.ags.loan.request.api.dto.UpdateLoanRequestDto;
 import co.com.powerup.ags.loan.request.api.mapper.LoanRequestMapper;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacity;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacityUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
@@ -43,6 +46,7 @@ public class HandlerV1 {
     public static final String SORT_DIRECTION_QUERY_PARAM = "sortDirection";
     private final LoanApplicationUseCase loanApplicationUseCase;
     private final UpdateLoanApplicationStatusUseCase loanApplicationStatusUseCase;
+    private final BorrowingCapacityUseCase borrowingCapacityUseCase;
     private final Validator validator;
 
     public Mono<ServerResponse> listLoanRequests(ServerRequest serverRequest) {
@@ -72,7 +76,7 @@ public class HandlerV1 {
                 .flatMap(loanApplicationUseCase::createLoanRequest)
                 .map(LoanRequestMapper.INSTANCE::toResponseDto)
                 .flatMap(responseDto -> {
-                    SuccessResponse<Object> successResponse = SuccessResponse.builder()
+                    SuccessResponse<LoanRequestResponseDto> successResponse = SuccessResponse.<LoanRequestResponseDto>builder()
                             .timestamp(LocalDateTime.now())
                             .path(serverRequest.path())
                             .data(responseDto)
@@ -284,5 +288,25 @@ public class HandlerV1 {
             
             return request;
         });
+    }
+
+    public Mono<ServerResponse> getBorrowingCapacity(ServerRequest serverRequest) {
+        var idNumber = serverRequest.queryParam("idNumber");
+        if (idNumber.isEmpty() || idNumber.get().isBlank()) {
+            return Mono.error(new IllegalArgumentException("Id number must be provided"));
+        }
+    
+        return borrowingCapacityUseCase.calculateBorrowingCapacity(idNumber.get())
+                .flatMap(borrowingCapacity -> {
+                    SuccessResponse<BorrowingCapacity> successResponse = SuccessResponse.<BorrowingCapacity>builder()
+                            .timestamp(LocalDateTime.now())
+                            .path(serverRequest.path())
+                            .data(borrowingCapacity)
+                            .message("Borrowing capacity calculated successfully")
+                            .build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(successResponse);
+                });
     }
 }

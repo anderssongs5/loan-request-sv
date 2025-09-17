@@ -23,4 +23,10 @@ public interface LoanApplicationRepository {
     Mono<Long> countLoanApplicationsByStatuses2(Set<Integer> statuses);
     
     Mono<LoanApplication> getById(String id);
+    
+    Mono<Long> countLoanApplicationsByStatusesAndEmail(Set<String> statuses, String email);
+    
+    Flux<LoanApplication> getLoanApplicationsPageableByStatusesAndEmail(Set<String> statuses, String email, 
+                                                                        Integer page, Integer size, 
+                                                                        String sortBy, String sortDirection);
 }

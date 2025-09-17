@@ -5,7 +5,7 @@ import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWith
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.user.User;
-import co.com.powerup.ags.loan.request.sqs.sender.notification.config.SQSSenderProperties;
+import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,13 +27,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationSQSSenderTest {
+class LoanAutomaticValidationSQSSenderTest {
 
     @Mock
     private SqsAsyncClient sqsAsyncClient;
 
     @Mock
-    private SQSSenderProperties properties;
+    private NotificationSQSSenderProperties properties;
 
     private NotificationSQSSender notificationSQSSender;
 

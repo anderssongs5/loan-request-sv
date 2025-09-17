@@ -3,6 +3,7 @@ package co.com.powerup.ags.loan.request.r2dbc.mapper;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestEntity;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestWithDetailsEntity;
+import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestSummaryEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -35,4 +36,8 @@ public interface LoanApplicationMapper {
     @Mapping(target = "loanType.interestRate", source = "interestRate")
     @Mapping(target = "loanType.automaticValidation", source = "automaticValidation")
     LoanApplication toDomain(LoanRequestWithDetailsEntity detailsEntity);
+    
+    @Mapping(target = "loanType.interestRate", source = "interestRate")
+    @Mapping(target = "status", ignore = true)
+    LoanApplication toDomain(LoanRequestSummaryEntity summaryEntity);
 }

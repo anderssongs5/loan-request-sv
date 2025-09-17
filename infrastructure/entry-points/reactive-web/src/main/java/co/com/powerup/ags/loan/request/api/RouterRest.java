@@ -383,6 +383,8 @@ public class RouterRest {
                         .PUT("/{id}", handlerV1::updateLoanRequest))
                 .path("/api/v1/loan-requests-2", builder -> builder
                         .GET("", handlerV1::getLoanRequestsByStatuses2))
+                .path("/api/v1/borrowing-capacity", builder -> builder
+                        .POST("", handlerV1::getBorrowingCapacity))
                 .build();
     }
 }

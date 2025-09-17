@@ -18,10 +18,10 @@ import java.net.URI;
 
 @Configuration
 @ConditionalOnMissingBean(SqsAsyncClient.class)
-public class SQSSenderConfig {
+public class NotificationSQSSenderConfig {
 
     @Bean
-    public SqsAsyncClient configSqs(SQSSenderProperties properties, MetricPublisher publisher) {
+    public SqsAsyncClient configSqs(NotificationSQSSenderProperties properties, MetricPublisher publisher) {
         return SqsAsyncClient.builder()
                 .endpointOverride(resolveEndpoint(properties))
                 .region(Region.of(properties.region()))
@@ -41,7 +41,7 @@ public class SQSSenderConfig {
                 .build();
     }
 
-    private URI resolveEndpoint(SQSSenderProperties properties) {
+    private URI resolveEndpoint(NotificationSQSSenderProperties properties) {
         if (properties.endpoint() != null) {
             return URI.create(properties.endpoint());
         }

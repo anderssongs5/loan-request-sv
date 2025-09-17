@@ -1,8 +1,8 @@
-package co.com.powerup.ags.loan.request.sqs.sender.notification;
+package co.com.powerup.ags.loan.request.sqs.sender.loanautomaticvalidation;
 
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWithUser;
-import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
-import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
+import co.com.powerup.ags.loan.request.model.loanapplication.AutomaticValidationRequest;
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.AutomaticValidationGateway;
+import co.com.powerup.ags.loan.request.sqs.sender.loanautomaticvalidation.config.LoanAutomaticValidationSQSSenderProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -17,9 +17,9 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 @Service
 @Log4j2
 @RequiredArgsConstructor
-public class NotificationSQSSender implements NotificationGateway {
+public class LoanAutomaticValidationSQSSender implements AutomaticValidationGateway {
     
-    private final NotificationSQSSenderProperties properties;
+    private final LoanAutomaticValidationSQSSenderProperties properties;
     private final SqsAsyncClient client;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -28,7 +28,7 @@ public class NotificationSQSSender implements NotificationGateway {
                 .flatMap(request -> Mono.fromFuture(client.sendMessage(request)))
                 .doOnNext(response -> log.info("Message sent {}", response.messageId()))
                 .doOnError(Exception.class, ex -> log.error("Error sending message {}", message, ex))
-                .onErrorMap(Exception.class, ex -> new RuntimeException("Error sending notification to SQS", ex))
+                .onErrorMap(Exception.class, ex -> new RuntimeException("Error sending automatic loan validation to SQS", ex))
                 .map(SendMessageResponse::messageId);
     }
 
@@ -39,18 +39,18 @@ public class NotificationSQSSender implements NotificationGateway {
                 .build();
     }
     
-    @Override
-    public Mono<Void> notify(LoanApplicationWithUser loanApplication) {
-        String message = getMessage(loanApplication);
-        
-        return send(message).then();
-    }
-    
-    private String getMessage(LoanApplicationWithUser loanApplication) {
+    private String getMessage(AutomaticValidationRequest loanApplication) {
         try {
             return objectMapper.writeValueAsString(loanApplication);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+    
+    @Override
+    public Mono<Void> validateLoanApplicationDecision(AutomaticValidationRequest request) {
+        String message = getMessage(request);
+        
+        return send(message).then();
     }
 }

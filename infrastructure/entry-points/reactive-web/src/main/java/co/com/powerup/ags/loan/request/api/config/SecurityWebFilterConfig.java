@@ -24,6 +24,7 @@ public class SecurityWebFilterConfig {
     public static final String API_V1_LOAN_REQUESTS_PATH = "/api/v1/loan-requests";
     public static final String CLIENT_ROLE = "CLIENT";
     public static final String ADVISOR_ROLE = "ADVISOR";
+    public static final String ADMIN_ROLE = "ADMIN";
     
     @Bean
     public ServerAccessDeniedHandler accessDeniedHandler() {
@@ -53,6 +54,8 @@ public class SecurityWebFilterConfig {
                         .pathMatchers(HttpMethod.GET, API_V1_LOAN_REQUESTS_PATH).hasRole(ADVISOR_ROLE)
                         .pathMatchers(HttpMethod.POST, API_V1_LOAN_REQUESTS_PATH).hasRole(CLIENT_ROLE)
                         .pathMatchers(HttpMethod.PUT, API_V1_LOAN_REQUESTS_PATH + "/**").hasRole(ADVISOR_ROLE)
+                        .pathMatchers(HttpMethod.POST, "/api/v1/borrowing-capacity").hasAnyRole(ADVISOR_ROLE,
+                                CLIENT_ROLE, ADMIN_ROLE)
                         .anyExchange()
                         .authenticated()
                 );
