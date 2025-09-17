@@ -1,6 +1,6 @@
 package co.com.powerup.ags.loan.request.sqs.sender.notification;
 
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWithUser;
+import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,13 +40,13 @@ public class NotificationSQSSender implements NotificationGateway {
     }
     
     @Override
-    public Mono<Void> notify(LoanApplicationWithUser loanApplication) {
+    public Mono<Void> notify(LoanApplicationNotification loanApplication) {
         String message = getMessage(loanApplication);
         
         return send(message).then();
     }
     
-    private String getMessage(LoanApplicationWithUser loanApplication) {
+    private String getMessage(LoanApplicationNotification loanApplication) {
         try {
             return objectMapper.writeValueAsString(loanApplication);
         } catch (JsonProcessingException e) {

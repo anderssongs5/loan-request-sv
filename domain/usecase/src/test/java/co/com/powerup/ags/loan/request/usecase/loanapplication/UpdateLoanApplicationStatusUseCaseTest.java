@@ -1,7 +1,7 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWithUser;
+import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
@@ -152,7 +152,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.just(sampleUser));
-        when(notificationGateway.notify(any(LoanApplicationWithUser.class)))
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
@@ -163,7 +163,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(notificationGateway).notify(any(LoanApplicationWithUser.class));
+        verify(notificationGateway).notify(any(LoanApplicationNotification.class));
     }
 
     @Test
@@ -188,7 +188,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.just(sampleUser));
-        when(notificationGateway.notify(any(LoanApplicationWithUser.class)))
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
@@ -199,7 +199,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(notificationGateway).notify(any(LoanApplicationWithUser.class));
+        verify(notificationGateway).notify(any(LoanApplicationNotification.class));
     }
 
     @Test
@@ -235,7 +235,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(notificationGateway, never()).notify(any(LoanApplicationWithUser.class));
+        verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
         verify(userGateway, never()).getUserByIdNumberOrEmail(anyString(), anyString());
     }
 
@@ -299,7 +299,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.just(sampleUser));
-        when(notificationGateway.notify(any(LoanApplicationWithUser.class)))
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.error(new RuntimeException("Notification failed")));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
@@ -338,7 +338,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(notificationGateway, never()).notify(any(LoanApplicationWithUser.class));
+        verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
     }
 
     @Test
@@ -370,6 +370,6 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(notificationGateway, never()).notify(any(LoanApplicationWithUser.class));
+        verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
     }
 }

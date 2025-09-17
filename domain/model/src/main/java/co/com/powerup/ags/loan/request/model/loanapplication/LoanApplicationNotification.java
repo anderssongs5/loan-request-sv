@@ -12,9 +12,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class LoanApplicationWithUser {
+public class LoanApplicationNotification {
     
     private LoanApplication loanRequest;
     private User user;
+    private String rejectReason;
     
 }
