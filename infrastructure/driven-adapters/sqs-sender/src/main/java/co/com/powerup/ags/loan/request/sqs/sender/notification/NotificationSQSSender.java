@@ -1,11 +1,11 @@
 package co.com.powerup.ags.loan.request.sqs.sender.notification;
 
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWithUser;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
-import co.com.powerup.ags.loan.request.sqs.sender.notification.config.SQSSenderProperties;
+import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -20,9 +20,11 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 @RequiredArgsConstructor
 public class NotificationSQSSender implements NotificationGateway {
     
-    private final SQSSenderProperties properties;
+    private final NotificationSQSSenderProperties properties;
     private final SqsAsyncClient client;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private Mono<String> send(String message) {
         return Mono.fromCallable(() -> buildRequest(message))
@@ -41,13 +43,13 @@ public class NotificationSQSSender implements NotificationGateway {
     }
     
     @Override
-    public Mono<Void> notify(LoanApplicationWithUser loanApplication) {
+    public Mono<Void> notify(LoanApplicationNotification loanApplication) {
         String message = getMessage(loanApplication);
         
         return send(message).then();
     }
     
-    private String getMessage(LoanApplicationWithUser loanApplication) {
+    private String getMessage(LoanApplicationNotification loanApplication) {
         try {
             return objectMapper.writeValueAsString(loanApplication);
         } catch (JsonProcessingException e) {

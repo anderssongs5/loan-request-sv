@@ -1,5 +1,6 @@
 package co.com.powerup.ags.loan.request.config;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.AutomaticValidationGateway;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
 import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
@@ -60,6 +61,11 @@ public class UseCasesConfigTest {
         @Bean
         public NotificationGateway notificationGateway() {
             return mock(NotificationGateway.class);
+        }
+        
+        @Bean
+        public AutomaticValidationGateway automaticValidationGateway() {
+            return mock(AutomaticValidationGateway.class);
         }
 
         @Bean

@@ -1,8 +1,12 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.ApprovedLoan;
+import co.com.powerup.ags.loan.request.model.loanapplication.AutomaticValidationRequest;
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.AutomaticValidationGateway;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
@@ -13,15 +17,16 @@ import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.FieldValidationException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanCreationForbiddenException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanTypeNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.FieldValidationException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanCreationForbiddenException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanTypeNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UserNotFoundException;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -44,6 +49,7 @@ public class LoanApplicationUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final LoanApplicationStatusRepository loanApplicationStatusRepository;
     private final UserGateway userGateway;
+    private final AutomaticValidationGateway automaticValidationGateway;
     
     public Flux<LoanApplication> getAllLoanRequests() {
         return loanApplicationRepository.getAllLoanRequests();
@@ -215,19 +221,21 @@ public class LoanApplicationUseCase {
                 .flatMap(user -> validateCreatedByMatchesUserEmail(command.getCreatedBy(), user.getEmail())
                         .thenReturn(user))
                 .zipWith(validateLoanApplicationStatusByName(PENDING.name()))
-                .map(tuple -> {
-                    String email = tuple.getT1().getEmail();
+                .flatMap(tuple -> {
+                    User user = tuple.getT1();
                     LoanApplicationStatus pendingStatus = tuple.getT2();
-                    return LoanApplication.builder()
+                    LoanApplication loanApplication = LoanApplication.builder()
                         .amount(command.getAmount())
                         .term(command.getTerm())
-                        .email(email)
+                        .email(user.getEmail())
                         .loanType(loanType)
                         .status(pendingStatus)
                         .build();
+                    
+                    return loanApplicationRepository.saveLoanApplication(loanApplication)
+                        .flatMap(savedLoan -> processAutomaticValidationIfEnabled(savedLoan, user));
                 })
-            )
-            .flatMap(loanApplicationRepository::saveLoanApplication);
+            );
     }
     
     private Mono<LoanType> validateLoanType(Integer loanTypeId) {
@@ -261,5 +269,63 @@ public class LoanApplicationUseCase {
             return Mono.error(new LoanCreationForbiddenException("User is not permitted to create this loan request."));
         }
         return Mono.empty();
+    }
+    
+    private Mono<LoanApplication> processAutomaticValidationIfEnabled(LoanApplication loanApplication, User user) {
+        if (loanApplication.getLoanType().getAutomaticValidation() != null && 
+            loanApplication.getLoanType().getAutomaticValidation()) {
+
+            performAutomaticValidation(loanApplication, user)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
+        }
+        
+        return Mono.just(loanApplication);
+    }
+    
+    @SuppressWarnings("unchecked")
+    private Mono<Void> performAutomaticValidation(LoanApplication loanApplication, User user) {
+        Set<String> approvedStatuses = Set.of(LoanApplicationStatusEnum.APPROVED.name());
+        
+        return loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(approvedStatuses, user.getEmail())
+                .flatMap(totalCount -> {
+                    if (totalCount == 0) {
+                        return Mono.<List<ApprovedLoan>>just(List.of());
+                    }
+
+                    int pageSize = 100;
+                    int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+                    
+                    return Flux.range(0, totalPages)
+                            .flatMap(page -> loanApplicationRepository.getLoanApplicationsPageableByStatusesAndEmail(
+                                    approvedStatuses, user.getEmail(), page, pageSize, null, "asc"))
+                            .map(this::getApprovedLoan)
+                            .collectList();
+                })
+                .cast(List.class)
+                .flatMap(approvedLoans -> {
+                    
+                    AutomaticValidationRequest validationRequest = AutomaticValidationRequest.builder()
+                        .loanApplicationId(loanApplication.getId())
+                        .userEmail(loanApplication.getEmail())
+                        .userIdNumber(user.getIdNumber())
+                        .loanAmount(loanApplication.getAmount())
+                        .termInMonths(loanApplication.getTerm())
+                        .interestRate(loanApplication.getLoanType().getInterestRate())
+                        .userBaseSalary(user.getBaseSalary())
+                        .approvedLoans((List<ApprovedLoan>) approvedLoans)
+                        .build();
+
+                    return automaticValidationGateway.validateLoanApplicationDecision(validationRequest);
+                })
+                .then();
+    }
+    
+    private ApprovedLoan getApprovedLoan(LoanApplication loanApplication) {
+        return ApprovedLoan.builder()
+                .amount(loanApplication.getAmount())
+                .interestRate(loanApplication.getLoanType().getInterestRate())
+                .term(loanApplication.getTerm())
+                .build();
     }
 }

@@ -12,11 +12,12 @@ import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacityUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +82,9 @@ class RouterRestTest {
 
     @MockitoBean
     private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
+
+    @MockitoBean
+    private BorrowingCapacityUseCase borrowingCapacityUseCase;
 
     private LoanApplication sampleLoanApplication;
     private LoanApplicationStatus pendingStatus;

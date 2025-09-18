@@ -3,7 +3,7 @@ package co.com.powerup.ags.loan.request.api.helper;
 import co.com.powerup.ags.loan.request.api.exception.UnauthorizedException;
 import co.com.powerup.ags.loan.request.api.exception.AccessDeniedException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.BusinessException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.BusinessException;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

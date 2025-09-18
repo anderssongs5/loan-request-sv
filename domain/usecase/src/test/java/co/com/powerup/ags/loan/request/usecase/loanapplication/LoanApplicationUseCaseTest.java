@@ -4,6 +4,7 @@ import co.com.powerup.ags.loan.request.model.common.PagedResponse;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.AutomaticValidationGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.LoanRequestRequiringReview;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
@@ -14,11 +15,11 @@ import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.FieldValidationException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanCreationForbiddenException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanApplicationStatusNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.LoanTypeNotFoundException;
-import co.com.powerup.ags.loan.request.usecase.loanapplication.exception.UserNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.FieldValidationException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanCreationForbiddenException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.LoanTypeNotFoundException;
+import co.com.powerup.ags.loan.request.usecase.common.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,6 +84,9 @@ class LoanApplicationUseCaseTest {
     @Mock
     private UserGateway userGateway;
 
+    @Mock
+    private AutomaticValidationGateway automaticValidationGateway;
+
     private LoanApplicationUseCase useCase;
 
     private User sampleUser;
@@ -97,7 +101,8 @@ class LoanApplicationUseCaseTest {
                 loanApplicationRepository,
                 loanTypeRepository,
                 loanApplicationStatusRepository,
-                userGateway
+                userGateway,
+                automaticValidationGateway
         );
 
         sampleUser = User.builder()
@@ -196,6 +201,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
 
@@ -447,6 +454,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(mariaLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(mariaCommand);
 
@@ -489,6 +498,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
 
@@ -515,6 +526,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
 
@@ -541,6 +554,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
 
@@ -567,6 +582,8 @@ class LoanApplicationUseCaseTest {
                 .thenReturn(Mono.just(pendingStatus));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
                 .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
 
         Mono<LoanApplication> result = useCase.createLoanRequest(command);
 
@@ -1166,6 +1183,155 @@ class LoanApplicationUseCaseTest {
                            enrichedRequest.getStatus().equals("REJECTED") &&
                            enrichedRequest.getUserName().equals("Carlos");
                 })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldCreateLoanRequestWithAutomaticValidationWhenEnabled() {
+        LoanType loanTypeWithAutomaticValidation = sampleLoanType.toBuilder()
+                .automaticValidation(true)
+                .build();
+
+        when(loanTypeRepository.getById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeWithAutomaticValidation));
+        when(userGateway.getUserByIdNumberOrEmail(VALID_USER_ID, null))
+                .thenReturn(Mono.just(sampleUser));
+        when(loanApplicationStatusRepository.getByName(PENDING))
+                .thenReturn(Mono.just(pendingStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
+
+        Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24)
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldCreateLoanRequestWithoutAutomaticValidationWhenDisabled() {
+        LoanType loanTypeWithoutAutomaticValidation = sampleLoanType.toBuilder()
+                .automaticValidation(false)
+                .build();
+
+        when(loanTypeRepository.getById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeWithoutAutomaticValidation));
+        when(userGateway.getUserByIdNumberOrEmail(VALID_USER_ID, null))
+                .thenReturn(Mono.just(sampleUser));
+        when(loanApplicationStatusRepository.getByName(PENDING))
+                .thenReturn(Mono.just(pendingStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
+
+        Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24)
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldCreateLoanRequestWithAutomaticValidationWhenNullAutomaticValidation() {
+        LoanType loanTypeWithNullAutomaticValidation = sampleLoanType.toBuilder()
+                .automaticValidation(null)
+                .build();
+
+        when(loanTypeRepository.getById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeWithNullAutomaticValidation));
+        when(userGateway.getUserByIdNumberOrEmail(VALID_USER_ID, null))
+                .thenReturn(Mono.just(sampleUser));
+        when(loanApplicationStatusRepository.getByName(PENDING))
+                .thenReturn(Mono.just(pendingStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
+
+        Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24)
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldCreateLoanRequestAndTriggerAutomaticValidationWithExistingApprovedLoans() {
+        LoanType loanTypeWithAutomaticValidation = sampleLoanType.toBuilder()
+                .automaticValidation(true)
+                .build();
+        
+        LoanApplication existingApprovedLoan = LoanApplication.builder()
+                .id(UUID.randomUUID().toString())
+                .email(CARLOS_EMAIL)
+                .amount(new BigDecimal("30000.00"))
+                .term(18)
+                .status(pendingStatus)
+                .loanType(sampleLoanType)
+                .build();
+
+        when(loanTypeRepository.getById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeWithAutomaticValidation));
+        when(userGateway.getUserByIdNumberOrEmail(VALID_USER_ID, null))
+                .thenReturn(Mono.just(sampleUser));
+        when(loanApplicationStatusRepository.getByName(PENDING))
+                .thenReturn(Mono.just(pendingStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(1L));
+
+        Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24)
+                )
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldCreateLoanRequestAndHandleAutomaticValidationGatewayError() {
+        LoanType loanTypeWithAutomaticValidation = sampleLoanType.toBuilder()
+                .automaticValidation(true)
+                .build();
+
+        when(loanTypeRepository.getById(LOAN_TYPE_ID_1))
+                .thenReturn(Mono.just(loanTypeWithAutomaticValidation));
+        when(userGateway.getUserByIdNumberOrEmail(VALID_USER_ID, null))
+                .thenReturn(Mono.just(sampleUser));
+        when(loanApplicationStatusRepository.getByName(PENDING))
+                .thenReturn(Mono.just(pendingStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationRepository.countLoanApplicationsByStatusesAndEmail(any(), any()))
+                .thenReturn(Mono.just(0L));
+
+        Mono<LoanApplication> result = useCase.createLoanRequest(validCommand);
+
+        StepVerifier.create(result)
+                .expectNextMatches(loanApp -> 
+                    loanApp.getEmail().equals(CARLOS_EMAIL) &&
+                    loanApp.getAmount().equals(AMOUNT_50000) &&
+                    loanApp.getTerm().equals(TERM_24)
+                )
                 .verifyComplete();
     }
 }

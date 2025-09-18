@@ -2,6 +2,7 @@ package co.com.powerup.ags.loan.request.r2dbc;
 
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestEntity;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestWithDetailsEntity;
+import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestSummaryEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -71,4 +72,38 @@ public interface LoanRequestReactiveRepository extends
     Flux<LoanRequestEntity> getAllByStatusIdIn(Set<Integer> statuses, Pageable pageable);
     
     Mono<Long> countByStatusIdIn(Set<Integer> statuses);
+    
+    @Query("""
+        SELECT COUNT(lr.request_id)
+        FROM loan_requests lr
+        JOIN loan_request_statuses ls ON lr.status_id = ls.status_id
+        WHERE ls.name IN (:statuses) AND lr.email = :email
+        """)
+    Mono<Long> countByStatusesAndEmail(@Param("statuses") Set<String> statuses, @Param("email") String email);
+    
+    @Query("""
+        SELECT lr.request_id, lr.email, ls.name as status_name, lr.amount, lr.term, lt.interest_rate
+        FROM loan_requests lr
+        JOIN loan_request_statuses ls ON lr.status_id = ls.status_id
+        JOIN loan_types lt ON lr.loan_type_id = lt.loan_type_id
+        WHERE ls.name IN (:statuses) AND lr.email = :email
+        ORDER BY
+            CASE WHEN :sortBy = 'email' AND :sortDirection = 'ASC' THEN lr.email END ASC,
+            CASE WHEN :sortBy = 'email' AND :sortDirection = 'DESC' THEN lr.email END DESC,
+            CASE WHEN :sortBy = 'term' AND :sortDirection = 'ASC' THEN lr.term END ASC,
+            CASE WHEN :sortBy = 'term' AND :sortDirection = 'DESC' THEN lr.term END DESC,
+            CASE WHEN :sortBy = 'amount' AND :sortDirection = 'ASC' THEN lr.amount END ASC,
+            CASE WHEN :sortBy = 'amount' AND :sortDirection = 'DESC' THEN lr.amount END DESC,
+            CASE WHEN :sortBy = 'status_name' AND :sortDirection = 'ASC' THEN ls.name END ASC,
+            CASE WHEN :sortBy = 'status_name' AND :sortDirection = 'DESC' THEN ls.name END DESC,
+            CASE WHEN :sortBy NOT IN ('email', 'term', 'amount', 'status_name') AND :sortDirection = 'ASC' THEN lr.request_id END ASC,
+            CASE WHEN :sortBy NOT IN ('email', 'term', 'amount', 'status_name') AND :sortDirection = 'DESC' THEN lr.request_id END DESC
+        LIMIT :size OFFSET :offset
+        """)
+    Flux<LoanRequestSummaryEntity> findSummaryByStatusesAndEmailPageable(@Param("statuses") Set<String> statuses,
+                                                                         @Param("email") String email,
+                                                                         @Param("sortBy") String sortBy, 
+                                                                         @Param("sortDirection") String sortDirection,
+                                                                         @Param("size") Integer size, 
+                                                                         @Param("offset") Integer offset);
 }

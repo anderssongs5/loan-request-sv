@@ -1,11 +1,11 @@
 package co.com.powerup.ags.loan.request.sqs.sender.notification;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationWithUser;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.user.User;
-import co.com.powerup.ags.loan.request.sqs.sender.notification.config.SQSSenderProperties;
+import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,11 +33,11 @@ class NotificationSQSSenderTest {
     private SqsAsyncClient sqsAsyncClient;
 
     @Mock
-    private SQSSenderProperties properties;
+    private NotificationSQSSenderProperties properties;
 
     private NotificationSQSSender notificationSQSSender;
 
-    private LoanApplicationWithUser sampleLoanApplicationWithUser;
+    private LoanApplicationNotification sampleLoanApplicationNotification;
 
     private static final String QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/123456789012/loan-notifications";
     private static final String MESSAGE_ID = "12345678-1234-1234-1234-123456789012";
@@ -89,7 +89,7 @@ class NotificationSQSSenderTest {
                 .idNumber("12345678")
                 .build();
 
-        sampleLoanApplicationWithUser = LoanApplicationWithUser.builder()
+        sampleLoanApplicationNotification = LoanApplicationNotification.builder()
                 .loanRequest(loanApplication)
                 .user(user)
                 .build();
@@ -106,7 +106,7 @@ class NotificationSQSSenderTest {
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         // When & Then
-        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationWithUser))
+        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationNotification))
                 .verifyComplete();
 
         // Verify message was sent with correct parameters
@@ -128,7 +128,7 @@ class NotificationSQSSenderTest {
                 .thenReturn(CompletableFuture.failedFuture(sqsException));
 
         // When & Then
-        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationWithUser))
+        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationNotification))
                 .expectError(RuntimeException.class)
                 .verify();
     }
@@ -151,7 +151,7 @@ class NotificationSQSSenderTest {
                 .birthDate(null) // This might cause issues during serialization
                 .build();
 
-        LoanApplicationWithUser invalidData = LoanApplicationWithUser.builder()
+        LoanApplicationNotification invalidData = LoanApplicationNotification.builder()
                 .loanRequest(invalidLoanApplication)
                 .user(userWithInvalidDate)
                 .build();
@@ -180,7 +180,7 @@ class NotificationSQSSenderTest {
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         // When
-        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationWithUser))
+        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationNotification))
                 .verifyComplete();
 
         // Then - Verify message content
@@ -213,11 +213,11 @@ class NotificationSQSSenderTest {
                 .description("Rejected")
                 .build();
 
-        LoanApplication rejectedLoanApplication = sampleLoanApplicationWithUser.getLoanRequest().toBuilder()
+        LoanApplication rejectedLoanApplication = sampleLoanApplicationNotification.getLoanRequest().toBuilder()
                 .status(rejectedStatus)
                 .build();
 
-        LoanApplicationWithUser rejectedData = sampleLoanApplicationWithUser.toBuilder()
+        LoanApplicationNotification rejectedData = sampleLoanApplicationNotification.toBuilder()
                 .loanRequest(rejectedLoanApplication)
                 .build();
 
@@ -256,7 +256,7 @@ class NotificationSQSSenderTest {
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         // When
-        StepVerifier.create(customSender.notify(sampleLoanApplicationWithUser))
+        StepVerifier.create(customSender.notify(sampleLoanApplicationNotification))
                 .verifyComplete();
 
         // Then
@@ -277,7 +277,7 @@ class NotificationSQSSenderTest {
     @Test
     void shouldHandleEmptyLoanApplicationWithUser() {
         // Given
-        LoanApplicationWithUser emptyData = LoanApplicationWithUser.builder().build();
+        LoanApplicationNotification emptyData = LoanApplicationNotification.builder().build();
 
         SendMessageResponse mockResponse = SendMessageResponse.builder()
                 .messageId(MESSAGE_ID)
@@ -305,7 +305,7 @@ class NotificationSQSSenderTest {
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         // When & Then
-        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationWithUser))
+        StepVerifier.create(notificationSQSSender.notify(sampleLoanApplicationNotification))
                 .verifyComplete();
 
         verify(sqsAsyncClient, times(1)).sendMessage(any(SendMessageRequest.class));
