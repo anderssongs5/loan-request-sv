@@ -1,9 +1,9 @@
 package co.com.powerup.ags.loan.request.sqs.sender.notification;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import org.junit.jupiter.api.BeforeEach;

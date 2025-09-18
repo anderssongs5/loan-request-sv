@@ -1,10 +1,11 @@
 package co.com.powerup.ags.loan.request.sqs.sender.notification;
 
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.sqs.sender.notification.config.NotificationSQSSenderProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -21,7 +22,9 @@ public class NotificationSQSSender implements NotificationGateway {
     
     private final NotificationSQSSenderProperties properties;
     private final SqsAsyncClient client;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private Mono<String> send(String message) {
         return Mono.fromCallable(() -> buildRequest(message))

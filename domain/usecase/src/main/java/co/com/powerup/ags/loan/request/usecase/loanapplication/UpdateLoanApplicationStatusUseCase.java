@@ -1,12 +1,12 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
 import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 import static co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum.*;
@@ -26,6 +27,7 @@ import static co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanAp
 public class UpdateLoanApplicationStatusUseCase {
     
     public static final String LOAN_APPLICATION_NOT_FOUND = "Loan application not found";
+    public static final String NEW_STATUS_IS_INVALID = "The new status is the same as the current status of the loan request.";
     private final LoanApplicationRepository loanApplicationRepository;
     private final LoanApplicationStatusRepository loanApplicationStatusRepository;
     private final LoanTypeRepository loanTypeRepository;
@@ -37,10 +39,10 @@ public class UpdateLoanApplicationStatusUseCase {
         return loanApplicationRepository.getById(command.id())
                 .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException(LOAN_APPLICATION_NOT_FOUND)))
                 .filter(la -> !la.getStatus().getId().equals(command.status()))
-                .switchIfEmpty(Mono.error(new UpdateLoanApplicationException("The new status is the same as the current status of the loan request.")))
+                .switchIfEmpty(Mono.error(new UpdateLoanApplicationException(NEW_STATUS_IS_INVALID)))
                 .flatMap(loanApplication -> updateStatus(loanApplication, command.status()))
                 .flatMap(updatedLoanApplication -> 
-                    notifyUser(updatedLoanApplication, null)
+                    notifyUser(updatedLoanApplication, null, null)
                         .then(Mono.just(updatedLoanApplication)));
     }
     
@@ -53,7 +55,7 @@ public class UpdateLoanApplicationStatusUseCase {
                 });
     }
     
-    private Mono<Void> notifyUser(LoanApplication updatedLoanApplication, String rejectReason) {
+    private Mono<Void> notifyUser(LoanApplication updatedLoanApplication, BigDecimal monthlyPayment, String rejectReason) {
         Flux<LoanApplicationStatus> approvedAndRejected = loanApplicationStatusRepository
                 .getByNames(Set.of(APPROVED.name(), REJECTED.name(), UNDER_REVIEW.name()));
         
@@ -74,27 +76,47 @@ public class UpdateLoanApplicationStatusUseCase {
                                         .user(user)
                                         .rejectReason(rejectReason)
                                         .build()))
+                .flatMap(loanApplicationNotification ->
+                        paymentPlanUseCase.calculatePaymentSchedule(loanApplicationNotification.getLoanRequest().getAmount(), monthlyPayment, loanApplicationNotification.getLoanRequest().getLoanType().getInterestRate(), loanApplicationNotification.getLoanRequest().getTerm())
+                                .collectList()
+                                .map(paymentPlan -> loanApplicationNotification.toBuilder()
+                                        .paymentPlan(paymentPlan)
+                                        .build()))
                 .flatMap(notificationGateway::notify)
                 .then();
     }
     
     public Mono<Void> updateLoanApplicationStatusFromAutoValidation(UpdateLoanAutomaticValidationCommand command) {
-        LoanApplicationStatusEnum status = LoanApplicationStatusEnum.valueOf(command.validationResponse().analysis().decision());
+        return validateDecision(command.validationResponse().analysis().decision())
+                .flatMap(statusEnum ->
+                        fetchLoanApplicationAndStatus(command.validationResponse().loanApplicationId(), statusEnum))
+                .filter(tuple -> !tuple.getT1().getStatus().getId().equals(tuple.getT2().getId()))
+                .switchIfEmpty(Mono.error(new UpdateLoanApplicationException(NEW_STATUS_IS_INVALID)))
+                .flatMap(tuple -> updateStatus(tuple.getT1(), tuple.getT2().getId()))
+                .flatMap(updatedLoan -> notifyUser(updatedLoan,
+                        command.validationResponse().analysis().newLoanMonthlyPayment(), 
+                        command.validationResponse().rejectionReason()))
+                .then();
+    }
+    
+    private Mono<LoanApplicationStatusEnum> validateDecision(String decision) {
+        try {
+            return Mono.just(LoanApplicationStatusEnum.valueOf(decision));
+        } catch (IllegalArgumentException ex) {
+            return Mono.error(new UpdateLoanApplicationException("Invalid decision: " + decision));
+        }
+    }
+    
+    private Mono<reactor.util.function.Tuple2<LoanApplication, LoanApplicationStatus>> fetchLoanApplicationAndStatus(
+            String loanApplicationId, LoanApplicationStatusEnum statusEnum) {
         
-        return loanApplicationRepository.getById(command.validationResponse().loanApplicationId())
-                .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException(LOAN_APPLICATION_NOT_FOUND)))
-                .flatMap(loanApplication -> 
-                    loanApplicationStatusRepository.getByName(status.name())
-                        .map(newStatus -> {
-                            if (loanApplication.getStatus().getId().equals(newStatus.getId())) {
-                                throw new UpdateLoanApplicationException("The new status is the same as the current status of the loan request.");
-                            }
-                            return newStatus;
-                        })
-                        .flatMap(newStatus -> updateStatus(loanApplication, newStatus.getId()))
-                )
-                .flatMap(updatedLoanApplication ->
-                        notifyUser(updatedLoanApplication, command.validationResponse().rejectionReason())
-                                .then());
+        Mono<LoanApplication> loanApplicationMono = loanApplicationRepository.getById(loanApplicationId)
+                .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException(LOAN_APPLICATION_NOT_FOUND)));
+        
+        Mono<LoanApplicationStatus> statusMono = loanApplicationStatusRepository.getByName(statusEnum.name())
+                .switchIfEmpty(Mono.error(new LoanApplicationStatusNotFoundException(
+                        "Loan application status '" + statusEnum.name() + "' not found")));
+        
+        return Mono.zip(loanApplicationMono, statusMono);
     }
 }

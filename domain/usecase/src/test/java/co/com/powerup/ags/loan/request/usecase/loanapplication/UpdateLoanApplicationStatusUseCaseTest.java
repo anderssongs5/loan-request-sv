@@ -1,13 +1,13 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
-import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.LoanApplicationStatusRepository;
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
+import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
@@ -76,7 +76,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 loanApplicationStatusRepository,
                 loanTypeRepository,
                 notificationGateway,
-                userGateway
+                userGateway,
+                null
         );
 
         pendingStatus = LoanApplicationStatus.builder()

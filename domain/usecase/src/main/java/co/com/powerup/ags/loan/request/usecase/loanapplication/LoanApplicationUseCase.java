@@ -278,8 +278,6 @@ public class LoanApplicationUseCase {
             performAutomaticValidation(loanApplication, user)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
-
-            return Mono.just(loanApplication);
         }
         
         return Mono.just(loanApplication);

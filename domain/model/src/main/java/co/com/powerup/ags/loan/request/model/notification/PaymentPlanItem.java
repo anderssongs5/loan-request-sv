@@ -1,4 +1,4 @@
-package co.com.powerup.ags.loan.request.usecase.loanapplication.dto;
+package co.com.powerup.ags.loan.request.model.notification;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
