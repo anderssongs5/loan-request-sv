@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationLoanAutomaticValidationSQSSenderConfigTest {
+class NotificationSQSSenderConfigTest {
 
     @Mock
     private MetricPublisher metricPublisher;

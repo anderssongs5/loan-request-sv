@@ -77,13 +77,23 @@ public class UpdateLoanApplicationStatusUseCase {
                                         .rejectReason(rejectReason)
                                         .build()))
                 .flatMap(loanApplicationNotification ->
-                        paymentPlanUseCase.calculatePaymentSchedule(loanApplicationNotification.getLoanRequest().getAmount(), monthlyPayment, loanApplicationNotification.getLoanRequest().getLoanType().getInterestRate(), loanApplicationNotification.getLoanRequest().getTerm())
-                                .collectList()
-                                .map(paymentPlan -> loanApplicationNotification.toBuilder()
-                                        .paymentPlan(paymentPlan)
-                                        .build()))
+                        this.getApplicationNotification(loanApplicationNotification, monthlyPayment))
                 .flatMap(notificationGateway::notify)
                 .then();
+    }
+    
+    private Mono<LoanApplicationNotification> getApplicationNotification(LoanApplicationNotification notification, BigDecimal monthlyPayment) {
+        return Mono.just(notification)
+                .filter(n -> n.getLoanRequest().getStatus().getName().equals(APPROVED.name()))
+                .flatMap(loanApplicationNotification -> paymentPlanUseCase.calculatePaymentSchedule(loanApplicationNotification.getLoanRequest().getAmount(),
+                                monthlyPayment,
+                                loanApplicationNotification.getLoanRequest().getLoanType().getInterestRate(),
+                                loanApplicationNotification.getLoanRequest().getTerm())
+                        .collectList()
+                        .map(paymentPlan -> loanApplicationNotification.toBuilder()
+                                .paymentPlan(paymentPlan)
+                                .build()))
+                .switchIfEmpty(Mono.just(notification));
     }
     
     public Mono<Void> updateLoanApplicationStatusFromAutoValidation(UpdateLoanAutomaticValidationCommand command) {

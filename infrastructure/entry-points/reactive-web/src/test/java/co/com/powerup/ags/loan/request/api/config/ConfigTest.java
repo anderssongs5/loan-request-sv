@@ -3,6 +3,7 @@ package co.com.powerup.ags.loan.request.api.config;
 import co.com.powerup.ags.loan.request.api.HandlerV1;
 import co.com.powerup.ags.loan.request.api.RouterRest;
 import co.com.powerup.ags.loan.request.model.common.PagedResponse;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacityUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.GetLoanApplicationsByStatusesCommand;
@@ -36,6 +37,9 @@ class ConfigTest {
     
     @MockitoBean
     private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
+
+    @MockitoBean
+    private BorrowingCapacityUseCase borrowingCapacityUseCase;
 
     @Test
     void corsConfigurationShouldAllowOrigins() {

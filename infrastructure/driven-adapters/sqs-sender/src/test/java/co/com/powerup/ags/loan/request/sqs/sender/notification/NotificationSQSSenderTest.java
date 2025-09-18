@@ -27,7 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class LoanAutomaticValidationSQSSenderTest {
+class NotificationSQSSenderTest {
 
     @Mock
     private SqsAsyncClient sqsAsyncClient;

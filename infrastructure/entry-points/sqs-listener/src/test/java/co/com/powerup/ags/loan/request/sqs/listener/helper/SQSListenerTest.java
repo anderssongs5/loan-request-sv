@@ -2,6 +2,7 @@ package co.com.powerup.ags.loan.request.sqs.listener.helper;
 
 import co.com.powerup.ags.loan.request.sqs.listener.SQSProcessor;
 import co.com.powerup.ags.loan.request.sqs.listener.config.SQSProperties;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -28,6 +29,9 @@ class SQSListenerTest {
 
     @Mock
     private SQSProperties sqsProperties;
+
+    @Mock
+    private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
 
     @BeforeEach
     void setUp() {
@@ -58,7 +62,7 @@ class SQSListenerTest {
         var sqsListener = SQSListener.builder()
                 .client(asyncClient)
                 .properties(sqsProperties)
-                .processor(new SQSProcessor())
+                .processor(new SQSProcessor(updateLoanApplicationStatusUseCase))
                 .operation("operation")
                 .build();
 

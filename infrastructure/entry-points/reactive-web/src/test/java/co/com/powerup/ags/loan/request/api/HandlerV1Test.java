@@ -10,6 +10,8 @@ import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.exception.UserServiceException;
 import co.com.powerup.ags.loan.request.model.exception.UserValidationException;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacity;
+import co.com.powerup.ags.loan.request.usecase.borrowingcapacity.BorrowingCapacityUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.LoanApplicationUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.UpdateLoanApplicationStatusUseCase;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.CreateLoanRequestCommand;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.reactive.function.server.MockServerRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
@@ -49,6 +52,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -71,12 +75,18 @@ class HandlerV1Test {
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON_VALUE = "application/json";
     private static final String TEST_USERNAME = "testuser@example.com";
+    private static final String BORROWING_CAPACITY_API_PATH = "/api/v1/borrowing-capacity";
+    private static final BigDecimal BORROWING_CAPACITY_35000 = new BigDecimal("35000.00");
+    public static final String ID_NUMBER_PARAM = "idNumber";
     
     @Mock
     private LoanApplicationUseCase loanApplicationUseCase;
 
     @Mock
     private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
+
+    @Mock
+    private BorrowingCapacityUseCase borrowingCapacityUseCase;
 
     private HandlerV1 handlerV1;
     
@@ -88,7 +98,7 @@ class HandlerV1Test {
     void setUp() {
         LocalValidatorFactoryBean validatorFactory = new LocalValidatorFactoryBean();
         validatorFactory.afterPropertiesSet();
-        handlerV1 = new HandlerV1(loanApplicationUseCase, updateLoanApplicationStatusUseCase, validatorFactory);
+        handlerV1 = new HandlerV1(loanApplicationUseCase, updateLoanApplicationStatusUseCase, borrowingCapacityUseCase, validatorFactory);
 
         pendingStatus = LoanApplicationStatus.builder()
                 .id(1)
@@ -1192,5 +1202,157 @@ class HandlerV1Test {
         StepVerifier.create(response)
                 .expectError(IllegalArgumentException.class)
                 .verify();
+    }
+
+    @Test
+    void shouldReturnBorrowingCapacitySuccessfully() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, VALID_USER_ID)
+                .build();
+
+        BorrowingCapacity borrowingCapacity = new BorrowingCapacity(BORROWING_CAPACITY_35000);
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(VALID_USER_ID)))
+                .thenReturn(Mono.just(borrowingCapacity));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectNextMatches(response -> response.statusCode() == HttpStatus.OK)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldPropagateUserNotFoundExceptionInBorrowingCapacity() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, INVALID_USER_ID)
+                .build();
+
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(INVALID_USER_ID)))
+                .thenReturn(Mono.error(new UserNotFoundException("User not found")));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectErrorMatches(throwable -> throwable instanceof UserNotFoundException)
+                .verify();
+    }
+
+    @Test
+    void shouldPropagateUserValidationExceptionInBorrowingCapacity() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, VALID_USER_ID)
+                .build();
+
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(VALID_USER_ID)))
+                .thenReturn(Mono.error(new UserValidationException("Invalid user data")));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectErrorMatches(throwable -> throwable instanceof UserValidationException)
+                .verify();
+    }
+
+    @Test
+    void shouldPropagateUserServiceExceptionInBorrowingCapacity() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, VALID_USER_ID)
+                .build();
+
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(VALID_USER_ID)))
+                .thenReturn(Mono.error(new UserServiceException("Service unavailable", new RuntimeException())));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectErrorMatches(throwable -> throwable instanceof UserServiceException)
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenIdNumberIsMissing() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .build();
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof IllegalArgumentException &&
+                    throwable.getMessage().contains("Id number must be provided"))
+                .verify();
+    }
+
+    @Test
+    void shouldHandleValidationErrorWhenIdNumberIsEmpty() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, "")
+                .build();
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof IllegalArgumentException &&
+                    throwable.getMessage().contains("Id number must be provided"))
+                .verify();
+    }
+
+    @Test
+    void shouldReturnBorrowingCapacityWithZeroValue() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, VALID_USER_ID)
+                .build();
+
+        BorrowingCapacity borrowingCapacity = new BorrowingCapacity(BigDecimal.ZERO);
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(VALID_USER_ID)))
+                .thenReturn(Mono.just(borrowingCapacity));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectNextMatches(response -> response.statusCode() == HttpStatus.OK)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnBorrowingCapacityWithLargeValue() {
+        ServerRequest request = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, VALID_USER_ID)
+                .build();
+
+        BorrowingCapacity borrowingCapacity = new BorrowingCapacity(new BigDecimal("1000000.00"));
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(VALID_USER_ID)))
+                .thenReturn(Mono.just(borrowingCapacity));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request))
+                .expectNextMatches(response -> response.statusCode() == HttpStatus.OK)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldHandleMultipleBorrowingCapacityRequests() {
+        String idNumber1 = "1111111111";
+        String idNumber2 = "2222222222";
+        
+        ServerRequest request1 = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, idNumber1)
+                .build();
+
+        ServerRequest request2 = MockServerRequest.builder()
+                .uri(URI.create(BORROWING_CAPACITY_API_PATH))
+                .queryParam(ID_NUMBER_PARAM, idNumber2)
+                .build();
+
+        BorrowingCapacity borrowingCapacity1 = new BorrowingCapacity(new BigDecimal("25000.00"));
+        BorrowingCapacity borrowingCapacity2 = new BorrowingCapacity(new BigDecimal("45000.00"));
+        
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(idNumber1)))
+                .thenReturn(Mono.just(borrowingCapacity1));
+        when(borrowingCapacityUseCase.calculateBorrowingCapacity(eq(idNumber2)))
+                .thenReturn(Mono.just(borrowingCapacity2));
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request1))
+                .expectNextMatches(response -> response.statusCode() == HttpStatus.OK)
+                .verifyComplete();
+
+        StepVerifier.create(handlerV1.getBorrowingCapacity(request2))
+                .expectNextMatches(response -> response.statusCode() == HttpStatus.OK)
+                .verifyComplete();
     }
 }

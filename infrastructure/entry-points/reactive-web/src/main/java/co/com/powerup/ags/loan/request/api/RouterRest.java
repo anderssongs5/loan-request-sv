@@ -258,6 +258,127 @@ public class RouterRest {
             )
         ),
         @RouterOperation(
+            path = "/api/v1/borrowing-capacity",
+            method = RequestMethod.GET,
+            operation = @Operation(
+                tags = {"Borrowing Capacity"},
+                summary = "Calculate borrowing capacity for a user",
+                description = """
+                    Calculate the borrowing capacity for a user based on their identification number.
+                    
+                    This endpoint calculates the maximum amount a user can borrow based on their financial profile,
+                    specifically using the 35% income rule where the maximum borrowing capacity is calculated as
+                    35% of the user's monthly income multiplied by the loan term.
+                    
+                    The calculation is performed by:
+                    1. Retrieving user information from the user service using the provided ID number
+                    2. Validating user eligibility and financial data
+                    3. Applying the 35% income rule to calculate maximum borrowing capacity
+                    4. Returning the calculated amount with appropriate precision
+                    
+                    Business Rules:
+                    - Maximum borrowing capacity = (Monthly Income * 0.35) * Loan Term (months)
+                    - User must exist in the system and have valid financial data
+                    - ID number must be provided and cannot be empty or blank
+                    
+                    Access Control:
+                    - This endpoint is accessible to authenticated users
+                    - No specific role restrictions apply for borrowing capacity calculation
+                    """,
+                operationId = "getBorrowingCapacity",
+                parameters = {
+                    @Parameter(
+                        name = "idNumber",
+                        description = "User's identification number to calculate borrowing capacity for",
+                        example = "1234567890",
+                        in = ParameterIn.QUERY,
+                        required = true,
+                        schema = @Schema(type = "string", minLength = 1)
+                    )
+                },
+                responses = {
+                    @ApiResponse(
+                        responseCode = "200",
+                        description = "Borrowing capacity calculated successfully",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Success Response",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-18T14:30:00.123456",
+                                  "path": "/api/v1/borrowing-capacity?idNumber=1234567890",
+                                  "data": {
+                                    "borrowingCapacity": "35000.00"
+                                  },
+                                  "message": "Borrowing capacity calculated successfully"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "400",
+                        description = "Bad Request - Missing or invalid ID number, or user validation failed",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Missing ID Number Error",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-18T14:30:00.123456",
+                                  "path": "/api/v1/borrowing-capacity",
+                                  "data": null,
+                                  "message": "Id number must be provided"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "404",
+                        description = "User not found",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "User Not Found Error",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-18T14:30:00.123456",
+                                  "path": "/api/v1/borrowing-capacity?idNumber=9999999999",
+                                  "data": null,
+                                  "message": "User not found"
+                                }
+                                """
+                            )
+                        )
+                    ),
+                    @ApiResponse(
+                        responseCode = "500",
+                        description = "Internal Server Error - User service unavailable or unexpected error",
+                        content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                                name = "Service Unavailable Error",
+                                value = """
+                                {
+                                  "timestamp": "2025-09-18T14:30:00.123456",
+                                  "path": "/api/v1/borrowing-capacity?idNumber=1234567890",
+                                  "data": null,
+                                  "message": "User service unavailable"
+                                }
+                                """
+                            )
+                        )
+                    )
+                }
+            )
+        ),
+        @RouterOperation(
             path = "/api/v1/loan-requests/{id}",
             method = RequestMethod.PUT,
             operation = @Operation(
@@ -384,7 +505,7 @@ public class RouterRest {
                 .path("/api/v1/loan-requests-2", builder -> builder
                         .GET("", handlerV1::getLoanRequestsByStatuses2))
                 .path("/api/v1/borrowing-capacity", builder -> builder
-                        .POST("", handlerV1::getBorrowingCapacity))
+                        .GET("", handlerV1::getBorrowingCapacity))
                 .build();
     }
 }

@@ -5,6 +5,7 @@ import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicati
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestEntity;
 import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestWithDetailsEntity;
+import co.com.powerup.ags.loan.request.r2dbc.entity.LoanRequestSummaryEntity;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -351,5 +352,238 @@ class LoanApplicationMapperTest {
         assertEquals(originalLoanApplication.getTerm(), mappedBackLoanApplication.getTerm());
         assertEquals(originalLoanApplication.getStatus().getId(), mappedBackLoanApplication.getStatus().getId());
         assertEquals(originalLoanApplication.getLoanType().getId(), mappedBackLoanApplication.getLoanType().getId());
+    }
+
+    @Test
+    void shouldMapSummaryEntityToLoanApplication() {
+        String loanId = "550e8400-e29b-41d4-a716-446655440000";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(CARLOS_EMAIL)
+                .statusName("APPROVED")
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .interestRate(INTEREST_RATE)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(CARLOS_EMAIL, loanApplication.getEmail());
+        assertEquals(AMOUNT_50000, loanApplication.getAmount());
+        assertEquals(TERM_24, loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(INTEREST_RATE, loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapSummaryEntityWithNullFieldsToLoanApplication() {
+        String loanId = "123e4567-e89b-12d3-a456-426614174000";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(MARIA_EMAIL)
+                .statusName(null)
+                .amount(null)
+                .term(TERM_36)
+                .interestRate(null)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(MARIA_EMAIL, loanApplication.getEmail());
+        assertNull(loanApplication.getAmount());
+        assertEquals(TERM_36, loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertNull(loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapNullSummaryEntityToNull() {
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain((LoanRequestSummaryEntity) null);
+        assertNull(loanApplication);
+    }
+
+    @Test
+    void shouldMapSummaryEntityWithZeroValues() {
+        String loanId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(CARLOS_EMAIL)
+                .statusName("PENDING")
+                .amount(BigDecimal.ZERO)
+                .term(0)
+                .interestRate(BigDecimal.ZERO)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(CARLOS_EMAIL, loanApplication.getEmail());
+        assertEquals(BigDecimal.ZERO, loanApplication.getAmount());
+        assertEquals(Integer.valueOf(0), loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(BigDecimal.ZERO, loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapSummaryEntityWithLargeValues() {
+        String loanId = "987fcdeb-51a2-4567-890a-bcdef1234567";
+        BigDecimal largeAmount = new BigDecimal("999999999.99");
+        BigDecimal largeInterestRate = new BigDecimal("99.99");
+        Integer largeTerm = 999;
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(MARIA_EMAIL)
+                .statusName("REJECTED")
+                .amount(largeAmount)
+                .term(largeTerm)
+                .interestRate(largeInterestRate)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(MARIA_EMAIL, loanApplication.getEmail());
+        assertEquals(largeAmount, loanApplication.getAmount());
+        assertEquals(largeTerm, loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(largeInterestRate, loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapSummaryEntityWithEmptyStringValues() {
+        String loanId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email("")
+                .statusName("")
+                .amount(AMOUNT_75000)
+                .term(TERM_24)
+                .interestRate(INTEREST_RATE)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals("", loanApplication.getEmail());
+        assertEquals(AMOUNT_75000, loanApplication.getAmount());
+        assertEquals(TERM_24, loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(INTEREST_RATE, loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapSummaryEntityForDifferentStatusTypes() {
+        String[] statusNames = {"PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED", "MANUAL_REVIEW"};
+        String baseLoanId = "fedcba09-8765-4321-0987-";
+        
+        for (int i = 0; i < statusNames.length; i++) {
+            String loanId = baseLoanId + String.format("%012d", i);
+            String statusName = statusNames[i];
+            
+            LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                    .id(loanId)
+                    .email(CARLOS_EMAIL)
+                    .statusName(statusName)
+                    .amount(new BigDecimal("" + (25000 + i * 10000)))
+                    .term(12 + i * 6)
+                    .interestRate(new BigDecimal("" + (10.0 + i * 2.5)))
+                    .build();
+
+            LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+            assertNotNull(loanApplication, "LoanApplication should not be null for status: " + statusName);
+            assertEquals(loanId, loanApplication.getId());
+            assertEquals(CARLOS_EMAIL, loanApplication.getEmail());
+            assertEquals(new BigDecimal("" + (25000 + i * 10000)), loanApplication.getAmount());
+            assertEquals(Integer.valueOf(12 + i * 6), loanApplication.getTerm());
+            
+            assertNotNull(loanApplication.getLoanType());
+            assertEquals(new BigDecimal("" + (10.0 + i * 2.5)), loanApplication.getLoanType().getInterestRate());
+            
+            assertNull(loanApplication.getStatus());
+        }
+    }
+
+    @Test
+    void shouldHandleSpecialCharactersInSummaryEntity() {
+        String loanId = "abcd1234-5678-90ef-ghij-klmnopqrstuv";
+        String emailWithSpecialChars = "josé.maría@domínio.com.br";
+        String statusWithSpecialChars = "REVISIÓN_MANUAL";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(emailWithSpecialChars)
+                .statusName(statusWithSpecialChars)
+                .amount(AMOUNT_50000)
+                .term(TERM_24)
+                .interestRate(INTEREST_RATE)
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(emailWithSpecialChars, loanApplication.getEmail());
+        assertEquals(AMOUNT_50000, loanApplication.getAmount());
+        assertEquals(TERM_24, loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(INTEREST_RATE, loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
+    }
+
+    @Test
+    void shouldMapSummaryEntityWithMixedDataTypes() {
+        String loanId = "11111111-2222-3333-4444-555555555555";
+        
+        LoanRequestSummaryEntity summaryEntity = LoanRequestSummaryEntity.builder()
+                .id(loanId)
+                .email(MARIA_EMAIL)
+                .statusName("UNDER_REVIEW")
+                .amount(new BigDecimal("123456.789"))
+                .term(37) // Non-standard term
+                .interestRate(new BigDecimal("17.123"))
+                .build();
+
+        LoanApplication loanApplication = LoanApplicationMapper.INSTANCE.toDomain(summaryEntity);
+
+        assertNotNull(loanApplication);
+        assertEquals(loanId, loanApplication.getId());
+        assertEquals(MARIA_EMAIL, loanApplication.getEmail());
+        assertEquals(new BigDecimal("123456.789"), loanApplication.getAmount());
+        assertEquals(Integer.valueOf(37), loanApplication.getTerm());
+        
+        assertNotNull(loanApplication.getLoanType());
+        assertEquals(new BigDecimal("17.123"), loanApplication.getLoanType().getInterestRate());
+        
+        assertNull(loanApplication.getStatus());
     }
 }

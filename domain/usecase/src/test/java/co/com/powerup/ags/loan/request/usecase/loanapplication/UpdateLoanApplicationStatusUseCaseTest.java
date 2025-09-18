@@ -8,10 +8,14 @@ import co.com.powerup.ags.loan.request.model.loanapplicationstatus.gateways.Loan
 import co.com.powerup.ags.loan.request.model.loantype.LoanType;
 import co.com.powerup.ags.loan.request.model.loantype.gateways.LoanTypeRepository;
 import co.com.powerup.ags.loan.request.model.notification.LoanApplicationNotification;
+import co.com.powerup.ags.loan.request.model.notification.PaymentPlanItem;
 import co.com.powerup.ags.loan.request.model.notification.gateway.NotificationGateway;
 import co.com.powerup.ags.loan.request.model.user.User;
 import co.com.powerup.ags.loan.request.model.user.gateways.UserGateway;
 import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanApplicationCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.UpdateLoanAutomaticValidationCommand;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.ValidationResponse;
+import co.com.powerup.ags.loan.request.usecase.loanapplication.dto.ValidationAnalysis;
 import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationNotFoundException;
 import co.com.powerup.ags.loan.request.usecase.common.exception.LoanApplicationStatusNotFoundException;
 import co.com.powerup.ags.loan.request.usecase.common.exception.UpdateLoanApplicationException;
@@ -55,6 +59,9 @@ class UpdateLoanApplicationStatusUseCaseTest {
     @Mock
     private UserGateway userGateway;
 
+    @Mock
+    private PaymentPlanUseCase paymentPlanUseCase;
+
     private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
 
     private LoanApplication sampleLoanApplication;
@@ -65,9 +72,13 @@ class UpdateLoanApplicationStatusUseCaseTest {
     private User sampleUser;
 
     private static final String LOAN_ID = "29a4639d-b328-453a-a408-d2eff0bcae84";
-    private static final String USER_EMAIL = "user@example.com";
+    private static final String USER_EMAIL = "maria.rodriguez@ejemplo.com";
+    private static final String USER_NAME = "Maria Rodriguez";
+    private static final String USER_ID = "1234567890";
     private static final BigDecimal LOAN_AMOUNT = new BigDecimal("50000.00");
     private static final Integer LOAN_TERM = 24;
+    private static final BigDecimal MONTHLY_PAYMENT = new BigDecimal("2500.00");
+    private static final String REJECTION_REASON = "Ingresos insuficientes";
 
     @BeforeEach
     void setUp() {
@@ -77,7 +88,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 loanTypeRepository,
                 notificationGateway,
                 userGateway,
-                null
+                paymentPlanUseCase
         );
 
         pendingStatus = LoanApplicationStatus.builder()
@@ -121,13 +132,13 @@ class UpdateLoanApplicationStatusUseCaseTest {
         sampleUser = User.builder()
                 .id(UUID.randomUUID().toString())
                 .email(USER_EMAIL)
-                .name("John")
-                .lastName("Doe")
-                .baseSalary(new BigDecimal("5000.00"))
+                .name(USER_NAME)
+                .lastName("Rodriguez")
+                .baseSalary(new BigDecimal("5000000.00"))
                 .phoneNumber("+57300123456")
                 .address("Calle 123 # 45-67, Bogotá")
                 .birthDate(LocalDate.of(1985, 6, 15))
-                .idNumber("12345678")
+                .idNumber(USER_ID)
                 .build();
     }
 
@@ -147,12 +158,23 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(
+                    PaymentPlanItem.builder()
+                        .paymentNumber(1)
+                        .principalPayment(new BigDecimal("2000.00"))
+                        .interestPayment(new BigDecimal("500.00"))
+                        .totalPayment(MONTHLY_PAYMENT)
+                        .remainingBalance(new BigDecimal("48000.00"))
+                        .build()
+                ));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
 
@@ -183,7 +205,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.just(personalLoanType));
@@ -225,7 +248,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
@@ -254,7 +278,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
 
     @Test
     void shouldThrowUpdateLoanApplicationExceptionWhenStatusIsSame() {
-        UpdateLoanApplicationCommand command = new UpdateLoanApplicationCommand(LOAN_ID, 1); // Same as current status
+        UpdateLoanApplicationCommand command = new UpdateLoanApplicationCommand(LOAN_ID, 1);
 
         when(loanApplicationRepository.getById(LOAN_ID))
                 .thenReturn(Mono.just(sampleLoanApplication));
@@ -294,12 +318,15 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(createSamplePaymentPlan()));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.error(new RuntimeException("Notification failed")));
 
@@ -324,7 +351,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.just(personalLoanType));
@@ -358,7 +386,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(updatedLoanApplication));
         when(loanApplicationStatusRepository.getByNames(Set.of(
                 LoanApplicationStatusEnum.APPROVED.name(), 
-                LoanApplicationStatusEnum.REJECTED.name())))
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.empty());
@@ -372,5 +401,278 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .verifyComplete();
 
         verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
+    }
+
+    @Test
+    void shouldUpdateAndNotifyWhenValidApprovedResponseFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("APPROVED", null, MONTHLY_PAYMENT);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        LoanApplication approvedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationStatusRepository.getById(approvedStatus.getId()))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(approvedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(createSamplePaymentPlan()));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .verifyComplete();
+
+        verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+    }
+
+    @Test
+    void shouldUpdateAndNotifyWhenValidRejectedResponseFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("REJECTED", REJECTION_REASON, null);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        LoanApplication rejectedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(rejectedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("REJECTED"))
+                .thenReturn(Mono.just(rejectedStatus));
+        when(loanApplicationStatusRepository.getById(rejectedStatus.getId()))
+                .thenReturn(Mono.just(rejectedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(rejectedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .verifyComplete();
+
+        verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInvalidDecisionFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("INVALID_STATUS", null, null);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof UpdateLoanApplicationException &&
+                    throwable.getMessage().contains("Invalid decision"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowExceptionWhenLoanNotFoundFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("APPROVED", null, MONTHLY_PAYMENT);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .expectError(LoanApplicationNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldThrowExceptionWhenStatusNotFoundFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("APPROVED", null, MONTHLY_PAYMENT);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof LoanApplicationStatusNotFoundException &&
+                    throwable.getMessage().contains("APPROVED"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowExceptionWhenSameStatusFromAutoValidation() {
+        LoanApplication approvedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        ValidationResponse validationResponse = createValidationResponse("APPROVED", null, MONTHLY_PAYMENT);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(approvedLoanApplication));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .expectErrorMatches(throwable -> 
+                    throwable instanceof UpdateLoanApplicationException &&
+                    throwable.getMessage().contains("same as the current status"))
+                .verify();
+    }
+
+    @Test
+    void shouldProcessCorrectlyWhenManualReviewDecisionFromAutoValidation() {
+        LoanApplicationStatus manualReviewStatus = LoanApplicationStatus.builder()
+                .id(5)
+                .name("MANUAL_REVIEW")
+                .description("Manual review required")
+                .build();
+
+        ValidationResponse validationResponse = createValidationResponse("MANUAL_REVIEW", "Requiere revisi\u00f3n manual", null);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        LoanApplication manualReviewLoanApplication = sampleLoanApplication.toBuilder()
+                .status(manualReviewStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("MANUAL_REVIEW"))
+                .thenReturn(Mono.just(manualReviewStatus));
+        when(loanApplicationStatusRepository.getById(manualReviewStatus.getId()))
+                .thenReturn(Mono.just(manualReviewStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(manualReviewLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .verifyComplete();
+
+        verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
+    }
+
+    @Test
+    void shouldPropagateErrorWhenNotificationFailsFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("APPROVED", null, MONTHLY_PAYMENT);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        LoanApplication approvedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationStatusRepository.getById(approvedStatus.getId()))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(approvedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(createSamplePaymentPlan()));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.error(new RuntimeException("Notification service unavailable")));
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldProcessCorrectlyWhenValidationResponseWithoutMonthlyPaymentFromAutoValidation() {
+        ValidationResponse validationResponse = createValidationResponse("REJECTED", REJECTION_REASON, null);
+        UpdateLoanAutomaticValidationCommand command = new UpdateLoanAutomaticValidationCommand(200, validationResponse);
+
+        LoanApplication rejectedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(rejectedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getByName("REJECTED"))
+                .thenReturn(Mono.just(rejectedStatus));
+        when(loanApplicationStatusRepository.getById(rejectedStatus.getId()))
+                .thenReturn(Mono.just(rejectedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(rejectedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
+                .verifyComplete();
+
+        verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+    }
+
+    private ValidationResponse createValidationResponse(String decision, String rejectionReason, BigDecimal monthlyPayment) {
+        ValidationAnalysis analysis = new ValidationAnalysis(
+                new BigDecimal("5000000.00"),
+                new BigDecimal("1750000.00"),
+                new BigDecimal("500000.00"),
+                new BigDecimal("1250000.00"),
+                monthlyPayment,
+                decision,
+                "Automated analysis based on income and debt"
+        );
+
+        return new ValidationResponse(
+                LOAN_ID,
+                analysis,
+                "APPROVED".equals(decision),
+                rejectionReason
+        );
+    }
+
+    private PaymentPlanItem createSamplePaymentPlan() {
+        return PaymentPlanItem.builder()
+                .paymentNumber(1)
+                .dueDate(LocalDate.now().plusMonths(1))
+                .principalPayment(new BigDecimal("2000.00"))
+                .interestPayment(new BigDecimal("500.00"))
+                .totalPayment(MONTHLY_PAYMENT)
+                .remainingBalance(new BigDecimal("48000.00"))
+                .build();
     }
 }
