@@ -1,6 +1,8 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.ApprovedLoanSummary;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.ApprovedLoanReportGateway;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
@@ -19,6 +21,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Set;
 
 import static co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum.*;
@@ -34,6 +37,7 @@ public class UpdateLoanApplicationStatusUseCase {
     private final NotificationGateway notificationGateway;
     private final UserGateway userGateway;
     private final PaymentPlanUseCase paymentPlanUseCase;
+    private final ApprovedLoanReportGateway approvedLoanReportGateway;
     
     public Mono<LoanApplication> updateLoanApplicationStatus(UpdateLoanApplicationCommand command) {
         return loanApplicationRepository.getById(command.id())
@@ -41,8 +45,8 @@ public class UpdateLoanApplicationStatusUseCase {
                 .filter(la -> !la.getStatus().getId().equals(command.status()))
                 .switchIfEmpty(Mono.error(new UpdateLoanApplicationException(NEW_STATUS_IS_INVALID)))
                 .flatMap(loanApplication -> updateStatus(loanApplication, command.status()))
-                .flatMap(updatedLoanApplication -> 
-                    notifyUser(updatedLoanApplication, null, null)
+                .flatMap(updatedLoanApplication ->
+                        processLoanApplicationUpdate(updatedLoanApplication, null, null)
                         .then(Mono.just(updatedLoanApplication)));
     }
     
@@ -53,6 +57,13 @@ public class UpdateLoanApplicationStatusUseCase {
                     var toSave = loanApplication.toBuilder().status(new LoanApplicationStatus(newStatus)).build();
                     return loanApplicationRepository.saveLoanApplication(toSave);
                 });
+    }
+    
+    private Mono<Void> processLoanApplicationUpdate(LoanApplication updatedLoanApplication, BigDecimal monthlyPayment, String rejectReason) {
+        return Mono.zip(
+                notifyUser(updatedLoanApplication, monthlyPayment, rejectReason),
+                notifyLoanApproved(updatedLoanApplication)
+        ).then();
     }
     
     private Mono<Void> notifyUser(LoanApplication updatedLoanApplication, BigDecimal monthlyPayment, String rejectReason) {
@@ -82,6 +93,15 @@ public class UpdateLoanApplicationStatusUseCase {
                 .then();
     }
     
+    private Mono<Void> notifyLoanApproved(LoanApplication updatedLoanApplication) {
+        return loanApplicationStatusRepository.getByName(APPROVED.name())
+                .filter(approved -> approved.getId().equals(updatedLoanApplication.getStatus().getId()))
+                .switchIfEmpty(Mono.empty())
+                .flatMap(status ->
+                        approvedLoanReportGateway.reportApprovedLoan(
+                                new ApprovedLoanSummary(updatedLoanApplication.getId(), updatedLoanApplication.getAmount(), Instant.now())));
+    }
+    
     private Mono<LoanApplicationNotification> getApplicationNotification(LoanApplicationNotification notification, BigDecimal monthlyPayment) {
         return Mono.just(notification)
                 .filter(n -> n.getLoanRequest().getStatus().getName().equals(APPROVED.name()))
@@ -103,7 +123,7 @@ public class UpdateLoanApplicationStatusUseCase {
                 .filter(tuple -> !tuple.getT1().getStatus().getId().equals(tuple.getT2().getId()))
                 .switchIfEmpty(Mono.error(new UpdateLoanApplicationException(NEW_STATUS_IS_INVALID)))
                 .flatMap(tuple -> updateStatus(tuple.getT1(), tuple.getT2().getId()))
-                .flatMap(updatedLoan -> notifyUser(updatedLoan,
+                .flatMap(updatedLoan -> processLoanApplicationUpdate(updatedLoan,
                         command.validationResponse().analysis().newLoanMonthlyPayment(), 
                         command.validationResponse().rejectionReason()))
                 .then();

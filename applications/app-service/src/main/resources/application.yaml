@@ -69,6 +69,10 @@ adapter:
       region: "us-east-1"
       queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/automaticLoanValidation"
       endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/automaticLoanValidation"
+    approved-loan-report:
+      region: "us-east-1"
+      queueUrl: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-approvedReport"
+      endpoint: "https://sqs.us-east-1.amazonaws.com/865937366609/crediya-approvedReport"
 entrypoint:
   sqs:
     region: "us-east-1"
