@@ -60,10 +60,8 @@ public class UpdateLoanApplicationStatusUseCase {
     }
     
     private Mono<Void> processLoanApplicationUpdate(LoanApplication updatedLoanApplication, BigDecimal monthlyPayment, String rejectReason) {
-        return Mono.zip(
-                notifyUser(updatedLoanApplication, monthlyPayment, rejectReason),
-                notifyLoanApproved(updatedLoanApplication)
-        ).then();
+        return notifyUser(updatedLoanApplication, monthlyPayment, rejectReason)
+                .then(notifyLoanApproved(updatedLoanApplication));
     }
     
     private Mono<Void> notifyUser(LoanApplication updatedLoanApplication, BigDecimal monthlyPayment, String rejectReason) {
@@ -96,10 +94,11 @@ public class UpdateLoanApplicationStatusUseCase {
     private Mono<Void> notifyLoanApproved(LoanApplication updatedLoanApplication) {
         return loanApplicationStatusRepository.getByName(APPROVED.name())
                 .filter(approved -> approved.getId().equals(updatedLoanApplication.getStatus().getId()))
-                .switchIfEmpty(Mono.empty())
                 .flatMap(status ->
                         approvedLoanReportGateway.reportApprovedLoan(
-                                new ApprovedLoanSummary(updatedLoanApplication.getId(), updatedLoanApplication.getAmount(), Instant.now())));
+                                new ApprovedLoanSummary(updatedLoanApplication.getId(), updatedLoanApplication.getAmount(), Instant.now())))
+                .switchIfEmpty(Mono.empty())
+                .then();
     }
     
     private Mono<LoanApplicationNotification> getApplicationNotification(LoanApplicationNotification notification, BigDecimal monthlyPayment) {

@@ -42,7 +42,7 @@ public class ApprovedLoanReportSQSSenderConfig {
     }
 
     private URI resolveEndpoint(ApprovedLoanReportSQSSenderProperties properties) {
-        if (properties.endpoint() != null) {
+        if (properties.endpoint() != null && !properties.endpoint().trim().isEmpty()) {
             return URI.create(properties.endpoint());
         }
         return null;

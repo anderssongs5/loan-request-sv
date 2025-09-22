@@ -1,6 +1,8 @@
 package co.com.powerup.ags.loan.request.usecase.loanapplication;
 
+import co.com.powerup.ags.loan.request.model.loanapplication.ApprovedLoanSummary;
 import co.com.powerup.ags.loan.request.model.loanapplication.LoanApplication;
+import co.com.powerup.ags.loan.request.model.loanapplication.gateways.ApprovedLoanReportGateway;
 import co.com.powerup.ags.loan.request.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatus;
 import co.com.powerup.ags.loan.request.model.loanapplicationstatus.LoanApplicationStatusEnum;
@@ -36,7 +38,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +62,9 @@ class UpdateLoanApplicationStatusUseCaseTest {
 
     @Mock
     private PaymentPlanUseCase paymentPlanUseCase;
+
+    @Mock
+    private ApprovedLoanReportGateway approvedLoanReportGateway;
 
     private UpdateLoanApplicationStatusUseCase updateLoanApplicationStatusUseCase;
 
@@ -88,7 +92,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 loanTypeRepository,
                 notificationGateway,
                 userGateway,
-                paymentPlanUseCase
+                paymentPlanUseCase,
+                approvedLoanReportGateway
         );
 
         pendingStatus = LoanApplicationStatus.builder()
@@ -177,6 +182,10 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 ));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectNextMatches(result -> {
@@ -187,6 +196,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .verifyComplete();
 
         verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -214,6 +224,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectNextMatches(result -> {
@@ -224,6 +236,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .verifyComplete();
 
         verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway, never()).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -251,6 +264,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 LoanApplicationStatusEnum.REJECTED.name(),
                 LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectNextMatches(result -> {
@@ -262,6 +277,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
 
         verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
         verify(userGateway, never()).getUserByIdNumberOrEmail(anyString(), anyString());
+        verify(approvedLoanReportGateway, never()).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -329,6 +345,8 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Flux.just(createSamplePaymentPlan()));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.error(new RuntimeException("Notification failed")));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectError(RuntimeException.class)
@@ -358,6 +376,10 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(personalLoanType));
         when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectNextMatches(result -> {
@@ -368,6 +390,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .verifyComplete();
 
         verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -391,6 +414,10 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
         when(loanTypeRepository.getById(personalLoanType.getId()))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
                 .expectNextMatches(result -> {
@@ -401,6 +428,7 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .verifyComplete();
 
         verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -433,11 +461,14 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Flux.just(createSamplePaymentPlan()));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
                 .verifyComplete();
 
         verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -468,11 +499,14 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
                 .verifyComplete();
 
         verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway, never()).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -568,11 +602,14 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 LoanApplicationStatusEnum.REJECTED.name(),
                 LoanApplicationStatusEnum.UNDER_REVIEW.name())))
                 .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
                 .verifyComplete();
 
         verify(notificationGateway, never()).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway, never()).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     @Test
@@ -639,11 +676,96 @@ class UpdateLoanApplicationStatusUseCaseTest {
                 .thenReturn(Mono.just(sampleUser));
         when(notificationGateway.notify(any(LoanApplicationNotification.class)))
                 .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
 
         StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatusFromAutoValidation(command))
                 .verifyComplete();
 
         verify(notificationGateway).notify(any(LoanApplicationNotification.class));
+        verify(approvedLoanReportGateway, never()).reportApprovedLoan(any(ApprovedLoanSummary.class));
+    }
+
+    @Test
+    void shouldCallApprovedLoanReportGatewayWhenLoanIsApproved() {
+        UpdateLoanApplicationCommand command = new UpdateLoanApplicationCommand(LOAN_ID, 3);
+        
+        LoanApplication updatedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getById(3))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(updatedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(createSamplePaymentPlan()));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
+                .expectNextMatches(result -> {
+                    assertEquals(LOAN_ID, result.getId());
+                    assertEquals(3, result.getStatus().getId());
+                    return true;
+                })
+                .verifyComplete();
+
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
+    }
+
+    @Test
+    void shouldHandleApprovedLoanReportGatewayFailure() {
+        UpdateLoanApplicationCommand command = new UpdateLoanApplicationCommand(LOAN_ID, 3);
+        
+        LoanApplication updatedLoanApplication = sampleLoanApplication.toBuilder()
+                .status(approvedStatus)
+                .build();
+
+        when(loanApplicationRepository.getById(LOAN_ID))
+                .thenReturn(Mono.just(sampleLoanApplication));
+        when(loanApplicationStatusRepository.getById(3))
+                .thenReturn(Mono.just(approvedStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class)))
+                .thenReturn(Mono.just(updatedLoanApplication));
+        when(loanApplicationStatusRepository.getByNames(Set.of(
+                LoanApplicationStatusEnum.APPROVED.name(), 
+                LoanApplicationStatusEnum.REJECTED.name(),
+                LoanApplicationStatusEnum.UNDER_REVIEW.name())))
+                .thenReturn(Flux.just(approvedStatus, rejectedStatus));
+        when(loanTypeRepository.getById(personalLoanType.getId()))
+                .thenReturn(Mono.just(personalLoanType));
+        when(userGateway.getUserByIdNumberOrEmail(null, USER_EMAIL))
+                .thenReturn(Mono.just(sampleUser));
+        when(paymentPlanUseCase.calculatePaymentSchedule(any(), any(), any(), any()))
+                .thenReturn(Flux.just(createSamplePaymentPlan()));
+        when(notificationGateway.notify(any(LoanApplicationNotification.class)))
+                .thenReturn(Mono.empty());
+        when(loanApplicationStatusRepository.getByName("APPROVED"))
+                .thenReturn(Mono.just(approvedStatus));
+        when(approvedLoanReportGateway.reportApprovedLoan(any(ApprovedLoanSummary.class)))
+                .thenReturn(Mono.error(new RuntimeException("Report gateway failed")));
+
+        StepVerifier.create(updateLoanApplicationStatusUseCase.updateLoanApplicationStatus(command))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(approvedLoanReportGateway).reportApprovedLoan(any(ApprovedLoanSummary.class));
     }
 
     private ValidationResponse createValidationResponse(String decision, String rejectionReason, BigDecimal monthlyPayment) {
