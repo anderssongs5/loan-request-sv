@@ -35,7 +35,8 @@ public class SecurityWebFilterConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http,
                                                          ExternalJwtAuthenticationManager authManager,
-                                                         BearerTokenConverter tokenConverter) {
+                                                         BearerTokenConverter tokenConverter,
+                                                         CustomAuthenticationEntryPoint authenticationEntryPoint) {
         
         AuthenticationWebFilter authFilter = new AuthenticationWebFilter(authManager);
         authFilter.setServerAuthenticationConverter(tokenConverter);
@@ -47,6 +48,7 @@ public class SecurityWebFilterConfig {
                 .addFilterAfter(authFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .exceptionHandling(exceptions -> exceptions
                         .accessDeniedHandler(accessDeniedHandler())
+                        .authenticationEntryPoint(authenticationEntryPoint)
                 )
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(SecurityConstants.EXCLUDED_PATTERNS.toArray(new String[0]))

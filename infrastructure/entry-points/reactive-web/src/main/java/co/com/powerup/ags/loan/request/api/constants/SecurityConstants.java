@@ -11,7 +11,9 @@ public class SecurityConstants {
     public static final Set<String> EXCLUDED_PATTERNS = Set.of(
             "/v3/api-docs.yaml",
             "/v3/api-docs/**",
-            "/webjars/swagger-ui/**");
+            "/webjars/swagger-ui/**",
+            "/actuator/**",
+            "/prometheus/**");
     
     public static final String TOKEN = "token";
     

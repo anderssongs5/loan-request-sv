@@ -25,6 +25,9 @@ class SecurityWebFilterConfigTest {
     @Mock
     private BearerTokenConverter tokenConverter;
 
+    @Mock
+    private CustomAuthenticationEntryPoint authenticationEntryPoint;
+
     private SecurityWebFilterConfig securityWebFilterConfig;
 
     @BeforeEach
@@ -55,7 +58,7 @@ class SecurityWebFilterConfigTest {
         ServerHttpSecurity http = ServerHttpSecurity.http();
 
         SecurityWebFilterChain filterChain = securityWebFilterConfig.securityWebFilterChain(
-                http, authManager, tokenConverter);
+                http, authManager, tokenConverter, authenticationEntryPoint);
 
         assertThat(filterChain).isNotNull();
     }

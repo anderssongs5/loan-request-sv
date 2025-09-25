@@ -25,6 +25,19 @@ management:
       enabled: true
 cors:
   allowed-origins: "http://localhost:4200,http://localhost:8081"
+
+logging:
+  level:
+    root: INFO
+    co.com.powerup.ags.loan.request: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    reactor.netty: INFO
+    org.springframework.r2dbc: DEBUG
+    io.r2dbc.postgresql: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+
 resilience4j:
   circuitbreaker:
     instances:
@@ -48,17 +61,17 @@ resilience4j:
         waitDurationInOpenState: "10s"
 adapters:
   r2dbc:
-    host: "localhost"
-    port: 5432
-    database: "loan-request-db"
-    schema: "public"
-    username: "postgres"
-    password: "postgres"
+    host: "${DB_HOST:localhost}"
+    port: ${DB_PORT:5432}
+    database: "${DB_DATABASE:loan-request-db}"
+    schema: "${DB_SCHEMA:public}"
+    username: "${DB_USERNAME:postgres}"
+    password: "${DB_PASSWORD:postgres}"
   restconsumer:
     timeout: 5000
-    url: "http://localhost:8080"
+    url: "${REST_CONSUMER_BASE_URL:http://localhost:8080}"
 security:
-  introspectionBaseUrl: "http://localhost:8080"
+  introspectionBaseUrl: "${SECURITY_INTROSPECTION_BASE_URL:http://localhost:8080}"
 adapter:
   sqs:
     notification:
